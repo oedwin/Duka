@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a5a37">
+<title>Register your shop - Duka</title>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<main class="auth">
+    <h1 class="wordmark">Duka</h1>
+    <p class="tag">Set up your shop in one minute.</p>
+
+    <form id="registerForm" class="card" novalidate>
+        <h2>Register your shop</h2>
+        <p id="formError" class="form-error" role="alert" hidden></p>
+
+        <div class="field">
+            <label for="shopName">Shop name</label>
+            <input class="input" id="shopName" name="shopName" type="text" autocomplete="organization" placeholder="e.g. Nakawa General Stores">
+        </div>
+        <div class="field">
+            <label for="address">Address <span class="muted">(optional)</span></label>
+            <input class="input" id="address" name="address" type="text" autocomplete="street-address" placeholder="e.g. Port Bell Road, Nakawa">
+        </div>
+        <div class="field">
+            <label for="fullName">Your name</label>
+            <input class="input" id="fullName" name="fullName" type="text" autocomplete="name">
+        </div>
+        <div class="field">
+            <label for="phone">Your phone number</label>
+            <input class="input" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0772 123 456">
+            <span class="help">You will use this number to log in.</span>
+        </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <input class="input" id="password" name="password" type="password" autocomplete="new-password">
+            <span class="help">At least 6 characters.</span>
+        </div>
+        <div class="field">
+            <label for="password2">Type the password again</label>
+            <input class="input" id="password2" name="password2" type="password" autocomplete="new-password">
+        </div>
+        <button class="btn block" id="submit" type="submit">Create my shop</button>
+    </form>
+
+    <p class="alt">Already registered? <a href="/">Log in</a></p>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/register.js"></script>
+</body>
+</html>

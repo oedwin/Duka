@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a5a37">
+<title>Log in - Duka</title>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<main class="auth">
+    <h1 class="wordmark">Duka</h1>
+    <p class="tag">Sales, stock and debts for your shop.</p>
+
+    <form id="loginForm" class="card" novalidate>
+        <h2>Log in</h2>
+        <p id="formError" class="form-error" role="alert" hidden></p>
+
+        <div class="field">
+            <label for="phone">Phone number</label>
+            <input class="input" id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0772 123 456">
+        </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <input class="input" id="password" name="password" type="password" autocomplete="current-password">
+            <label class="check" for="showPassword"><input type="checkbox" id="showPassword"> Show password</label>
+        </div>
+        <button class="btn block" id="submit" type="submit">Log in</button>
+    </form>
+
+    <p class="alt">New shop? <a href="/register.html">Register your shop</a></p>
+    <p class="hint" id="demoHint" hidden>Demo data: phone 0700000001, password demo1234</p>
+</main>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/login.js"></script>
+</body>
+</html>
