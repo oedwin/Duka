@@ -9,11 +9,10 @@ Stack: Node.js + Express, PostgreSQL (`pg`), plain HTML/CSS/JavaScript in `/publ
 
 1. Install Node.js 18+ and PostgreSQL. Create an empty database, e.g. `duka_db`.
 2. In this folder run: `npm install`
-3. Copy `.env.example` to `.env` and fill in your database password and a long random `JWT_SECRET`.
-4. Build the tables and demo data: `npm run db:reset` (type `yes`; this deletes everything in that database)
+3. Build the tables and demo data: `npm run db:reset` (type `yes`; this deletes everything in that database)
    - Later, `npm run db:setup` safely adds anything that is missing without deleting data.
-5. Check the connection: `npm run db:test`
-6. Start the server: `npm run dev`, then open http://localhost:3000
+4. Check the connection: `npm run db:test`
+5. Start the server: `npm run dev`, then open http://localhost:3000
 
 Demo login: phone `0700000001`, password `demo1234` (owner). Cashier: `0700000002`.
 Change these before real use.
