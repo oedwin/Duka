@@ -10,6 +10,9 @@ const { Pool, types } = require("pg");
 // to real numbers. This avoids bugs like "25000" + "5000" = "250005000".
 types.setTypeParser(20, (value) => parseInt(value, 10));
 
+// DATE columns (e.g. expiry_date) stay as plain "2026-12-31" text, so time zones can never shift them.
+types.setTypeParser(1082, (value) => value);
+
 // If DATABASE_URL is set we use it, otherwise we use the separate DB_* values.
 const connection = process.env.DATABASE_URL
     ? { connectionString: process.env.DATABASE_URL }

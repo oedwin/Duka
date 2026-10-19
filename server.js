@@ -12,6 +12,8 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
 const settingsRoutes = require("./routes/settings");
+const categoryRoutes = require("./routes/categories");
+const productRoutes = require("./routes/products");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -56,6 +58,8 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
 
 // Health-check route
 app.get("/health", (req, res) => {

@@ -38,6 +38,11 @@
         setTimeout(function () { toast.remove(); }, type === "error" ? 6000 : 3500);
     };
 
+    /* A message to show on the NEXT page, e.g. after saving: Duka.flash("Product added") */
+    Duka.flash = function (message) {
+        try { sessionStorage.setItem("duka_flash", message); } catch (e) { /* ignore */ }
+    };
+
     /* Disable a button while something is saving. */
     Duka.busy = function (button, isBusy, busyText) {
         if (isBusy) {
@@ -122,7 +127,7 @@
 
     /* Shrink a chosen picture in the browser so it is small to store and send.
        Resolves with a data URL (PNG stays PNG so logos keep their transparency). */
-    Duka.resizeImage = function (file, maxSize) {
+    Duka.resizeImage = function (file, maxSize, asJpeg) {
         return new Promise(function (resolve, reject) {
             if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
                 return reject(new Error("Please choose a PNG or JPG picture."));
@@ -134,9 +139,11 @@
                 var canvas = document.createElement("canvas");
                 canvas.width = Math.max(1, Math.round(image.width * scale));
                 canvas.height = Math.max(1, Math.round(image.height * scale));
-                canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+                var context = canvas.getContext("2d");
+                if (asJpeg) { context.fillStyle = "#ffffff"; context.fillRect(0, 0, canvas.width, canvas.height); }
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
                 URL.revokeObjectURL(url);
-                resolve(file.type === "image/png"
+                resolve(file.type === "image/png" && !asJpeg
                     ? canvas.toDataURL("image/png")
                     : canvas.toDataURL("image/jpeg", 0.82));
             };

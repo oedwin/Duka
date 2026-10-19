@@ -13,11 +13,10 @@
             h("p", {}, user.role === "owner" ? "You are the owner of " + user.shopName + "." : "You are logged in at " + user.shopName + ".")),
         h("div", { class: "card" },
             h("h2", {}, "Your shop is ready"),
-            h("p", {}, "Products, selling and receipts are coming in the next steps."),
-            user.role === "owner"
-                ? h("div", { class: "actions" },
-                    h("a", { class: "btn", href: "/settings.html" }, "Shop settings"),
-                    h("a", { class: "btn ghost", href: "/staff.html" }, "Add staff"))
-                : null)
+            h("p", {}, "Add your products first. Selling and receipts come in the next steps."),
+            h("div", { class: "actions" },
+                h("a", { class: "btn", href: "/products.html" }, "Products"),
+                user.role === "owner" ? h("a", { class: "btn ghost", href: "/settings.html" }, "Shop settings") : null,
+                user.role === "owner" ? h("a", { class: "btn ghost", href: "/staff.html" }, "Staff") : null))
     );
 })();

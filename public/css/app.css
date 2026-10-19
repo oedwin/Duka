@@ -153,3 +153,24 @@ textarea.input { min-height: 84px; resize: vertical; }
 .logo-preview { display: block; max-width: 160px; max-height: 120px; margin-bottom: .6rem; border: 1px solid var(--line); border-radius: 8px; padding: 6px; background: #fff; }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+/* ---------- Products ---------- */
+.badge.warn { background: #fff1c9; color: #7a5200; }
+.badges { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .3rem; }
+.row.link { color: inherit; text-decoration: none; font-weight: 400; }
+.row.link:hover { background: var(--green-soft); }
+.price { font-weight: 800; white-space: nowrap; text-align: right; }
+.price small { display: block; font-weight: 600; color: var(--muted); }
+.toolbar { display: grid; gap: .6rem; margin-bottom: 1rem; }
+@media (min-width: 600px) { .toolbar { grid-template-columns: 2fr 1fr 1fr; } }
+.page-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.help.bad { color: var(--red); font-weight: 700; }
+.help.good { color: var(--green-dark); font-weight: 700; }
+.unit-box { margin-bottom: 1rem; padding: .9rem; border: 2px dashed var(--line); border-radius: 12px; }
+details.card > summary { cursor: pointer; min-height: 44px; font-weight: 800; font-size: 1.1rem; }
+details.card[open] > summary { margin-bottom: .9rem; }
+.pair { display: grid; gap: 0 .8rem; grid-template-columns: 1fr; }
+@media (min-width: 600px) { .pair { grid-template-columns: 1fr 1fr; } }
+.stat { font-size: 1.5rem; font-weight: 800; }
+.result-list { margin: .5rem 0 0; padding-left: 1.2rem; }
+.result-list li { margin-bottom: .3rem; }
