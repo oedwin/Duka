@@ -38,6 +38,28 @@
         setTimeout(function () { toast.remove(); }, type === "error" ? 6000 : 3500);
     };
 
+    /* Pop-up with your own content. Duka.modal(element, {sticky:true}) returns {close}.
+       sticky = tapping outside does not close it (use for forms with money in them). */
+    Duka.modal = function (content, options) {
+        options = options || {};
+        var previousFocus = document.activeElement;
+        var overlay = Duka.h("div", { class: "overlay" },
+            Duka.h("div", { class: "dialog" + (options.wide ? " wide" : ""), role: "dialog", "aria-modal": "true" }, content));
+        function close() {
+            document.removeEventListener("keydown", onKey);
+            overlay.remove();
+            if (previousFocus && previousFocus.focus) previousFocus.focus();
+            if (options.onClose) options.onClose();
+        }
+        function onKey(event) { if (event.key === "Escape") close(); }
+        if (!options.sticky) {
+            document.addEventListener("keydown", onKey);
+            overlay.addEventListener("click", function (event) { if (event.target === overlay) close(); });
+        }
+        document.body.appendChild(overlay);
+        return { close: close, overlay: overlay };
+    };
+
     /* A message to show on the NEXT page, e.g. after saving: Duka.flash("Product added") */
     Duka.flash = function (message) {
         try { sessionStorage.setItem("duka_flash", message); } catch (e) { /* ignore */ }

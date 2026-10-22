@@ -11,7 +11,7 @@ function notFound(req, res) {
 function errorHandler(error, req, res, next) {
     // Errors we threw on purpose, with a friendly message
     if (error instanceof HttpError) {
-        return res.status(error.status).json({ success: false, message: error.message });
+        return res.status(error.status).json({ success: false, message: error.message, ...(error.extra || {}) });
     }
 
     // Broken or oversized request bodies

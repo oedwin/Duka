@@ -14,6 +14,11 @@ const userRoutes = require("./routes/users");
 const settingsRoutes = require("./routes/settings");
 const categoryRoutes = require("./routes/categories");
 const productRoutes = require("./routes/products");
+const customerRoutes = require("./routes/customers");
+const saleRoutes = require("./routes/sales");
+const stockRoutes = require("./routes/stock");
+const supplierRoutes = require("./routes/suppliers");
+const purchaseRoutes = require("./routes/purchases");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -60,6 +65,11 @@ app.use("/api/users", userRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/customers", customerRoutes);
+app.use("/api/sales", saleRoutes);
+app.use("/api/stock", stockRoutes);
+app.use("/api/suppliers", supplierRoutes);
+app.use("/api/purchases", purchaseRoutes);
 
 // Health-check route
 app.get("/health", (req, res) => {

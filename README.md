@@ -36,6 +36,16 @@ Change these before real use.
 - Cost price is stored per base unit. The product form lets the shopkeeper type the cost per carton or sack and does the division.
 - Prices: one retail price for the base unit (required), optional wholesale prices (with a minimum quantity) and optional prices per bigger unit. A bigger unit without its own price is sold at the base retail price multiplied by how many are inside.
 
+## How a sale is saved (Step 4)
+
+- One sale = one database transaction: receipt number, lines, payments, stock and the customer's debt all save together, or none do.
+- Every sale (and return) carries a `clientUuid` made by the browser. Sending it twice returns the first sale, so a double tap or retry can never duplicate a sale.
+- Product rows are locked while a sale is written, so two tills cannot sell the last item twice.
+- Selling below cost, or taking a customer over their credit limit, needs a confirmation (the server answers with a `code` and the till asks "Sell anyway?").
+- Voiding or returning never deletes anything. It adds stock movements, ledger lines and an audit entry with the reason.
+- Receipt numbers are sequential per shop (`000001`, `000002`, ...). Held sales have no number until completed.
+- "Today" and all date filters use Kampala time.
+
 ## Rules the code follows
 
 - Money is whole UGX (integers). Stock is whole numbers in the smallest unit.
@@ -65,6 +75,16 @@ Change these before real use.
 | PATCH | `/api/products/:id` | owner | Change any part, remove or put back (`isActive`). Not stock. |
 | GET | `/api/products/export` | owner | All products as rows for a CSV (`?template=1` for the blank template) |
 | POST | `/api/products/import` | owner | Add up to 300 CSV rows at a time |
+| GET | `/api/customers?search=` | logged in | Find customers |
+| POST | `/api/customers` | logged in | Quick-add a customer at the till |
+| GET | `/api/sales/catalog` | logged in | Products for the till (`?search=`, `?barcode=`, `?ids=1,2`); never includes cost |
+| POST | `/api/sales` | logged in | Complete a sale (`status:"completed"`) or hold one (`status:"held"`). Needs a `clientUuid`. |
+| GET | `/api/sales` | owner: all, cashier: own | History: `?from=&to=&status=&method=&cashierId=&customerId=&search=&page=` with totals |
+| GET | `/api/sales/held` | logged in | Held sales |
+| DELETE | `/api/sales/held/:id` | owner / who held it | Remove a held sale |
+| GET | `/api/sales/:id` | owner: any, cashier: own | One sale with items, payments, returns and receipt header |
+| POST | `/api/sales/:id/void` | owner | Cancel a sale (needs a reason). Stock and debt are put back. |
+| POST | `/api/sales/:id/returns` | owner | Take items back and refund (needs a `clientUuid` and a reason) |
 | GET | `/health` | anyone | Server check |
 
 Send the token as `Authorization: Bearer <token>`.

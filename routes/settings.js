@@ -42,6 +42,7 @@ async function loadSettings(db, shopId) {
         allowNegativeStock: shop.allow_negative_stock,
         currency: shop.currency,
         lowStockDefault: Number(values.low_stock_default ?? 10),
+        overdueDays: Number(values.overdue_days ?? 30),
         language: values.language || "en"
     };
 }
@@ -101,6 +102,11 @@ router.put(
         if (has(body, "lowStockDefault")) {
             settingChanges.low_stock_default = String(
                 wholeNumber(body.lowStockDefault, "the low stock level", { min: 0, max: 100000 })
+            );
+        }
+        if (has(body, "overdueDays")) {
+            settingChanges.overdue_days = String(
+                wholeNumber(body.overdueDays, "the number of days", { min: 1, max: 365 })
             );
         }
         if (has(body, "language")) {

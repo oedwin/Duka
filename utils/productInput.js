@@ -8,15 +8,15 @@ const MAX_MONEY = 10000000000; // UGX 10 billion
 const MAX_PHOTO_LENGTH = 250000; // characters of the data URL (about 180 KB)
 const LEVELS = ["retail", "wholesale"]; // 'special' prices are set per customer later
 
-/** "2026-12-31" or empty. Rejects impossible dates like 2026-02-31. */
-function cleanDate(value) {
+/** "2026-12-31" or empty. Rejects impossible dates like 2026-02-31. `label` names the field in the message. */
+function cleanDate(value, label = "the expiry date") {
     if (value === undefined || value === null || value === "") return null;
     const text = String(value).trim();
     const valid =
         /^\d{4}-\d{2}-\d{2}$/.test(text) &&
         !Number.isNaN(Date.parse(text)) &&
         new Date(text + "T00:00:00Z").toISOString().slice(0, 10) === text;
-    if (!valid) throw new HttpError(400, "The expiry date is not valid.");
+    if (!valid) throw new HttpError(400, `Please check ${label}: that is not a real date.`);
     return text;
 }
 

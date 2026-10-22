@@ -392,6 +392,13 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
     UNIQUE (shop_id, client_uuid)
 );
 
+-- Added in Step 6: a cancelled customer payment keeps its reason.
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS void_reason TEXT;
+
+-- Added in Step 5: a wrong supplier payment is cancelled (kept, marked), never deleted.
+ALTER TABLE supplier_payments ADD COLUMN IF NOT EXISTS voided_at  TIMESTAMPTZ;
+ALTER TABLE supplier_payments ADD COLUMN IF NOT EXISTS void_reason TEXT;
+
 -- ---------------------------------------------------------------------
 -- 14. STOCK MOVEMENTS (full history: every change to stock is one row)
 --     quantity_change is in BASE units: + stock in, - stock out.
@@ -558,6 +565,7 @@ CREATE INDEX IF NOT EXISTS idx_purchases_shop_date   ON purchases (shop_id, purc
 CREATE INDEX IF NOT EXISTS idx_purchases_supplier    ON purchases (supplier_id);
 CREATE INDEX IF NOT EXISTS idx_purchase_items_purch  ON purchase_items (purchase_id);
 CREATE INDEX IF NOT EXISTS idx_supplier_payments_sup ON supplier_payments (supplier_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_payments_purchase ON supplier_payments (purchase_id);
 CREATE INDEX IF NOT EXISTS idx_stock_mv_product      ON stock_movements (product_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_stock_mv_shop_date    ON stock_movements (shop_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_expenses_shop_date    ON expenses (shop_id, expense_date DESC);

@@ -37,6 +37,7 @@
             .map(function (opt) { return h("option", { value: opt[0], selected: opt[0] === settings.receiptPaper }, opt[1]); }));
     var lowStock = text("lowStockDefault", String(settings.lowStockDefault), { type: "number", inputmode: "numeric", min: "0" });
     var negative = h("input", { type: "checkbox", id: "allowNegativeStock", checked: settings.allowNegativeStock });
+    var overdue = text("overdueDays", String(settings.overdueDays || 30), { type: "number", inputmode: "numeric", min: "1" });
     var language = h("select", { class: "input", id: "language", name: "language" },
         h("option", { value: "en", selected: true }, "English"));
 
@@ -86,6 +87,10 @@
             h("label", { class: "check", for: "allowNegativeStock" }, negative,
                 "Allow selling when the system shows no stock left")),
         h("div", { class: "card" },
+            h("h2", {}, "Customers and credit"),
+            field("overdueDays", "A debt is overdue after (days)", overdue,
+                "Customers who have owed you for longer than this are marked Overdue.")),
+        h("div", { class: "card" },
             h("h2", {}, "Language"),
             field("language", "App language", language)),
         errorBox, save);
@@ -102,6 +107,7 @@
             receiptFooter: footer.value,
             receiptPaper: paper.value,
             lowStockDefault: lowStock.value,
+            overdueDays: overdue.value,
             allowNegativeStock: negative.checked,
             language: language.value
         };

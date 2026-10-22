@@ -71,6 +71,8 @@
 
                 var error = new Error((json && json.message) || "Something went wrong. Please try again.");
                 error.status = response.status;
+                error.code = json && json.code;       // e.g. "BELOW_COST": the screen can ask "Sell anyway?"
+                error.details = json && json.details;
 
                 if (response.status === 401 && !options.noAuthRedirect) {
                     Duka.auth.clear();
@@ -141,7 +143,25 @@
         date: function (value) {
             if (!value) return "";
             var d = new Date(value);
-            return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+            return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Kampala" });
+        },
+        /* "20 Oct 2026, 3:45 pm" in Kampala time, whatever the phone's own clock setting */
+        dateTime: function (value) {
+            if (!value) return "";
+            return new Date(value).toLocaleString("en-GB", {
+                day: "numeric", month: "short", year: "numeric",
+                hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Africa/Kampala"
+            });
+        },
+        /* Today's date in Kampala as "2026-10-20" (used for date filters) */
+        today: function () {
+            return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Kampala" });
+        },
+        /* "2026-10-20" plus/minus whole days -> "2026-10-19" */
+        addDays: function (dateText, days) {
+            var parts = dateText.split("-").map(Number);
+            var d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+            return d.toISOString().slice(0, 10);
         }
     };
 })();

@@ -48,4 +48,13 @@ function has(body, key) {
     return Object.prototype.hasOwnProperty.call(body || {}, key);
 }
 
-module.exports = { cleanText, checkPassword, wholeNumber, parseId, has };
+/** The unique id the browser makes for each sale/payment (see Duka.uuid) */
+function cleanUuid(value, label = "request") {
+    const text = typeof value === "string" ? value.trim() : "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) {
+        throw new HttpError(400, `The ${label} is missing its unique id. Please refresh the page and try again.`);
+    }
+    return text.toLowerCase();
+}
+
+module.exports = { cleanText, checkPassword, wholeNumber, parseId, has, cleanUuid };
