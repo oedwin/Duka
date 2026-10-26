@@ -392,6 +392,9 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
     UNIQUE (shop_id, client_uuid)
 );
 
+-- Added in Step 7: how a purchase was paid (needed for the end-of-day cash count). Older rows count as cash.
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS payment_method VARCHAR(15);
+
 -- Added in Step 6: a cancelled customer payment keeps its reason.
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS void_reason TEXT;
 

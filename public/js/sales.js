@@ -127,6 +127,7 @@
     page.main.append(h("div", {},
         h("div", { class: "page-head" }, h("h1", {}, "Sales"),
             h("p", {}, isOwner ? "Every sale in your shop." : "Your sales.")),
+        h("div", { class: "page-actions" }, h("a", { class: "btn ghost", href: "/closing.html" }, "Close the day")),
         h("div", { class: "card" },
             h("div", { class: "seg-group wrap", role: "group", "aria-label": "Days" }, presetButtons),
             customRow),

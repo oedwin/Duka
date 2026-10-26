@@ -187,10 +187,10 @@ async function writePurchase(client, user, input, ip) {
 
     const purchase = await client.query(
         `INSERT INTO purchases (shop_id, client_uuid, supplier_id, reference_no, purchase_date, total_cost,
-                                amount_paid, balance_due, note, created_by)
-         VALUES ($1, $2, $3, $4, COALESCE($5::date, ${TODAY}), $6, $7, $8, $9, $10) RETURNING id`,
+                                amount_paid, balance_due, note, created_by, payment_method)
+         VALUES ($1, $2, $3, $4, COALESCE($5::date, ${TODAY}), $6, $7, $8, $9, $10, $11) RETURNING id`,
         [shopId, input.clientUuid, input.supplierId, input.referenceNo, input.purchaseDate, total,
-         paid, balanceDue, input.note, user.id]
+         paid, balanceDue, input.note, user.id, input.payment ? input.payment.method : null]
     );
     const purchaseId = purchase.rows[0].id;
 
