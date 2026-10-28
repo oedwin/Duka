@@ -61,7 +61,26 @@ app.use(
 
 // Allow the server to read JSON request bodies
 app.use(express.json({ limit: "2mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+
+/* ---------- Clean URLs for HTML pages ---------- */
+
+// If someone opens /closing.html, send them to /closing (index.html -> /).
+// IMPORTANT: keep the part after the "?" (e.g. ?id=5&new=1). Pages such as the receipt, a customer
+// or a supplier need it to know which record to show; without it they cannot work.
+app.get(/^\/([a-zA-Z0-9_-]+)\.html$/, (req, res) => {
+    const page = req.params[0];
+    const queryStart = req.originalUrl.indexOf("?");
+    const query = queryStart === -1 ? "" : req.originalUrl.slice(queryStart);
+    res.redirect((page === "index" ? "/" : `/${page}`) + query);
+});
+
+// "extensions: ['html']" makes /closing serve public/closing.html,
+// /pos serve pos.html, and so on. Real files (css, js, images) still work.
+app.use(
+    express.static(path.join(__dirname, "public"), {
+        extensions: ["html"]
+    })
+);
 
 // ---------- Routes ----------
 app.use("/api/auth", authRoutes);
