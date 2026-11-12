@@ -341,3 +341,17 @@ details.card[open] > summary { margin-bottom: .9rem; }
 @media print { .bar-chart .chart-bar rect { fill: #444 !important; } }
 .print-only { display: none; }
 @media print { .print-only { display: block; margin-bottom: .75rem; } .card { break-inside: avoid; } }
+
+/* ---------- Till cart: one compact row per item (name | qty | price | total | X) ---------- */
+.cart-line { padding: .55rem 0; }
+.cl-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 70px 78px 40px; gap: .4rem; align-items: center; }
+.cl-name { min-width: 0; }
+.cl-name .name { overflow-wrap: anywhere; line-height: 1.2; }
+.cl-name small { display: block; }
+.cl-unit { min-height: 36px; padding: .15rem .4rem; font-size: .85rem; margin-top: .15rem; }
+.cl-row .qty-input { min-height: 44px; padding: .3rem; }
+.cl-price, .cl-total { text-align: right; font-variant-numeric: tabular-nums; }
+.cl-total { font-weight: 800; }
+.cl-row .x { width: 40px; height: 40px; }
+.cart-line > .help { display: block; margin-top: .2rem; }
+@media (max-width: 380px) { .cl-row { grid-template-columns: minmax(0, 1fr) 56px 60px 68px 36px; gap: .3rem; } }

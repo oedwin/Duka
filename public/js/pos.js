@@ -104,38 +104,37 @@
 
     function refreshLine(line) {
         var e = line.els;
-        e.unit.value = String(line.unit.id);
+        if (e.unit) e.unit.value = String(line.unit.id);
         if (document.activeElement !== e.qty) e.qty.value = String(line.qty);
-        if (document.activeElement !== e.price) e.price.value = String(line.price);
+        e.price.textContent = Duka.fmt.number(line.price);   // read-only: price is set by the system
         e.label.textContent = line.label || "";
-        e.auto.hidden = line.mode === "auto";
-        e.total.textContent = Duka.fmt.ugx(line.qty * line.price);
+        e.total.textContent = Duka.fmt.number(line.qty * line.price);
     }
 
     function buildLine(line) {
         var units = sortedUnits(line.product);
         var e = {
-            unit: h("select", { class: "input", "aria-label": "Unit" },
-                units.map(function (u) { return h("option", { value: String(u.id) }, u.name); })),
-            qty: numInput({ class: "input qty-input", min: "1", "aria-label": "Quantity" }),
-            price: numInput({ "aria-label": "Price per " + line.unit.name }),
+            // Only products sold in more than one unit get a (small) unit chooser; others just show the unit name.
+            unit: units.length > 1
+                ? h("select", { class: "input cl-unit", "aria-label": "Unit for " + line.product.name },
+                    units.map(function (u) { return h("option", { value: String(u.id) }, u.name); }))
+                : null,
+            qty: numInput({ class: "input qty-input", min: "1", "aria-label": "Quantity of " + line.product.name }),
+            price: h("span", { class: "cl-price", "aria-label": "Price" }),
             label: h("small", { class: "muted" }),
-            auto: h("button", { type: "button", class: "linkish", hidden: true }, "Use suggested price"),
-            total: h("strong", {}),
+            total: h("strong", { class: "cl-total" }),
             warn: h("span", { class: "help bad" })
         };
-        var minus = h("button", { type: "button", class: "btn ghost small qty-btn", "aria-label": "One less" }, "\u2212");
-        var plus = h("button", { type: "button", class: "btn ghost small qty-btn", "aria-label": "One more" }, "+");
         var remove = h("button", { type: "button", class: "x", "aria-label": "Remove " + line.product.name }, "\u00d7");
 
         e.root = h("div", { class: "cart-line" },
-            h("div", { class: "cl-top" }, h("div", { class: "name" }, line.product.name), remove),
-            h("div", { class: "cl-controls" },
-                h("div", { class: "field" }, e.unit),
-                h("div", { class: "qty" }, minus, e.qty, plus)),
-            h("div", { class: "field" },
-                h("label", {}, "Price (UGX) for 1"), e.price, e.label, e.auto),
-            h("div", { class: "cl-bottom" }, e.warn, e.total));
+            h("div", { class: "cl-row" },
+                h("div", { class: "cl-name" },
+                    h("div", { class: "name" }, line.product.name),
+                    e.unit || h("small", { class: "muted" }, line.unit.name),
+                    e.label),
+                e.qty, e.price, e.total, remove),
+            e.warn);
         line.els = e;
 
         function changed(reprice) {
@@ -143,8 +142,9 @@
             refreshLine(line);
             recalc();
         }
-        e.unit.addEventListener("change", function () {
+        if (e.unit) e.unit.addEventListener("change", function () {
             line.unit = line.product.units.filter(function (u) { return String(u.id) === e.unit.value; })[0];
+            line.mode = "auto";
             changed(true);
         });
         e.qty.addEventListener("input", function () {
@@ -155,16 +155,7 @@
         e.qty.addEventListener("change", function () {
             if (line.qty < 1) { line.qty = 1; changed(true); }
         });
-        minus.addEventListener("click", function () { line.qty = Math.max(1, line.qty - 1); changed(true); });
-        plus.addEventListener("click", function () { line.qty += 1; changed(true); });
-        e.price.addEventListener("input", function () {
-            var value = Number(e.price.value);
-            line.price = Number.isFinite(value) && value >= 0 ? Math.round(value) : 0;
-            line.mode = "manual";
-            line.label = "Price changed by hand";
-            changed(false);
-        });
-        e.auto.addEventListener("click", function () { line.mode = "auto"; changed(true); });
+        e.qty.addEventListener("focus", function () { e.qty.select(); });
         remove.addEventListener("click", function () {
             state.cart.splice(state.cart.indexOf(line), 1);
             e.root.remove();

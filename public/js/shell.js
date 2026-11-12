@@ -102,7 +102,9 @@
         var nav = h("nav", { class: "nav", "aria-label": "Main" });
         var morePanel = h("div", { class: "nav-more" });
         var moreButton = h("button", { type: "button", class: "more-btn", "aria-expanded": "false" }, svg("more"), "More");
+        // Clean URLs: the address bar shows /pos, but the menu list below uses /pos.html.
         var here = window.location.pathname;
+        if (here !== "/" && !/\.html$/.test(here)) here += ".html";
         var hasMore = false;
 
         Duka.NAV.forEach(function (item) {
