@@ -49,6 +49,51 @@
     var list = h("div", { class: "card" });
     var more = h("button", { type: "button", class: "btn ghost block", hidden: true }, "Show more");
 
+    // ---------- owner only: totals for each staff member, same days and filters ----------
+    var staffList = [];
+    var staffCard = h("div", { class: "card", hidden: true });
+    var staffRequestId = 0;
+
+    async function loadStaffSummary() {
+        if (!isOwner || staffList.length === 0) return;
+        var mine = ++staffRequestId;
+        var r = range();
+        var results = await Promise.all(staffList.map(function (u) {
+            var q = new URLSearchParams({ from: r.from, to: r.to, status: state.status, page: 1, limit: 1, cashierId: String(u.id) });
+            if (state.method) q.set("method", state.method);
+            if (state.search) q.set("search", state.search);
+            return Duka.api("/api/sales?" + q.toString())
+                .then(function (data) { return { user: u, totals: data.totals }; })
+                .catch(function () { return { user: u, failed: true }; });
+        }));
+        if (mine !== staffRequestId) return;
+
+        var rows = results.filter(function (x) { return x.failed || x.totals.sales > 0 || x.user.isActive !== false; }).map(function (x) {
+            var u = x.user;
+            var selected = state.cashierId === String(u.id);
+            return h("button", {
+                type: "button", class: "row product-btn", "aria-pressed": selected ? "true" : "false",
+                onclick: function () {
+                    state.cashierId = selected ? "" : String(u.id);
+                    cashier.value = state.cashierId;
+                    load(true);
+                }
+            },
+                h("div", { class: "grow" },
+                    h("div", { class: "name" }, u.fullName + (selected ? "  (showing below)" : "")),
+                    h("div", { class: "sub" }, x.failed ? "Could not load" :
+                        x.totals.sales + (x.totals.sales === 1 ? " sale" : " sales") +
+                        (x.totals.credit > 0 ? " \u00b7 on credit " + Duka.fmt.ugx(x.totals.credit) : "") +
+                        (x.totals.refunds > 0 ? " \u00b7 returned " + Duka.fmt.ugx(x.totals.refunds) : ""))),
+                h("div", { class: "price" }, x.failed ? "" : Duka.fmt.ugx(x.totals.net)));
+        });
+        staffCard.replaceChildren.apply(staffCard, [
+            h("h2", {}, "Sales by staff"),
+            h("p", { class: "muted" }, "Net sold by each person for the days and filters chosen. Tap a name to see only their sales.")
+        ].concat(rows.length ? rows : [h("p", { class: "empty" }, "No staff found.")]));
+        staffCard.hidden = false;
+    }
+
     function syncControls() {
         presetButtons.forEach(function (b) { b.classList.toggle("on", b.dataset.key === state.preset); });
         customRow.hidden = state.preset !== "custom";
@@ -102,6 +147,7 @@
                     stat("Net sold", Duka.fmt.ugx(data.totals.net)),
                     stat("Paid at the till", Duka.fmt.ugx(data.totals.paid)),
                     stat("Given on credit", Duka.fmt.ugx(data.totals.credit), data.totals.credit > 0)));
+                loadStaffSummary();
             }
             data.sales.forEach(function (s) { list.appendChild(row(s)); });
             if (data.total === 0) list.replaceChildren(h("p", { class: "empty" }, "No sales found for these choices."));
@@ -127,16 +173,18 @@
     page.main.append(h("div", {},
         h("div", { class: "page-head" }, h("h1", {}, "Sales"),
             h("p", {}, isOwner ? "Every sale in your shop." : "Your sales.")),
-        h("div", { class: "page-actions" }, h("a", { class: "btn ghost", href: "/closing.html" }, "Close the day")),
+        isOwner ? h("div", { class: "page-actions" }, h("a", { class: "btn ghost", href: "/closing.html" }, "Close the day")) : null,
         h("div", { class: "card" },
             h("div", { class: "seg-group wrap", role: "group", "aria-label": "Days" }, presetButtons),
             customRow),
         h("div", { class: "toolbar" }, method, status, cashier),
-        searchBox, summary, list, more));
+        searchBox, summary, isOwner ? staffCard : null, list, more));
 
     if (isOwner) {
         Duka.api("/api/users").then(function (data) {
             data.staff.forEach(function (u) { cashier.appendChild(h("option", { value: String(u.id) }, u.fullName)); });
+            staffList = data.staff;
+            loadStaffSummary();
         }).catch(function () { /* the cashier filter stays on "All" */ });
     }
 

@@ -15,7 +15,7 @@
             h("a", { class: "btn big", href: "/pos.html" }, "Sell"),
             isOwner ? h("a", { class: "btn ghost", href: "/expenses.html" }, "Record expense") : null,
             isOwner ? h("a", { class: "btn ghost", href: "/purchase-form.html" }, "Receive stock") : null,
-            h("a", { class: "btn ghost", href: "/closing.html" }, "Close the day")),
+            isOwner ? h("a", { class: "btn ghost", href: "/closing.html" }, "Close the day") : null),
         box));
 
     function stat(label, value, kind, note) {
@@ -65,6 +65,50 @@
         return h("div", { class: "card" }, h("h2", {}, "Sales per day"), h("div", { class: "chart-toggle" }, seven, thirty), holder);
     }
 
+    // Owner only: today's sales for each staff member, with the individual sales one tap away.
+    var METHOD_NAME = { cash: "Cash", mobile_money: "Mobile Money", bank: "Bank" };
+    function staffSalesCard() {
+        var today = Duka.fmt.today();
+        var holder = h("div", {}, h("p", { class: "empty" }, "Loading..."));
+        var card = h("div", { class: "card" }, h("h2", {}, "Sales by staff today"), holder);
+
+        function saleRow(s) {
+            var sub = [Duka.fmt.dateTime(s.createdAt)].concat((s.methods || []).map(function (m) { return METHOD_NAME[m] || m; })).join(" \u00b7 ");
+            return h("a", { class: "row link", href: "/receipt.html?id=" + s.id },
+                h("div", { class: "grow" },
+                    h("div", { class: "name" }, "No. " + (s.receiptNumber || "-") + " \u00b7 " + (s.customerName || "Walk-in")),
+                    h("div", { class: "sub" }, sub),
+                    s.balanceDue > 0 ? h("div", { class: "badges" }, h("span", { class: "badge warn" }, "On credit " + Duka.fmt.ugx(s.balanceDue))) : null),
+                h("div", { class: "price" }, Duka.fmt.ugx(s.totalAmount)));
+        }
+
+        function personBlock(item) {
+            var p = item.person;
+            if (item.failed) return h("p", { class: "form-error" }, "Could not load the sales of " + p.fullName + ".");
+            var t = item.data.totals;
+            return h("details", { class: "unit-box" },
+                h("summary", {}, h("strong", {}, p.fullName), " \u00b7 " + t.sales + (t.sales === 1 ? " sale" : " sales") + " \u00b7 " + Duka.fmt.ugx(t.total)),
+                t.credit > 0 ? h("p", { class: "muted" }, "Given on credit: " + Duka.fmt.ugx(t.credit)) : null,
+                item.data.sales.length ? item.data.sales.map(saleRow) : h("p", { class: "empty" }, "No sales today."),
+                item.data.hasMore ? h("a", { class: "btn ghost small", href: "/sales.html" }, "See all in Sales") : null);
+        }
+
+        Duka.api("/api/users").then(function (u) {
+            return Promise.all(u.staff.map(function (person) {
+                var q = new URLSearchParams({ from: today, to: today, status: "completed", page: 1, limit: 50, cashierId: String(person.id) });
+                return Duka.api("/api/sales?" + q.toString())
+                    .then(function (data) { return { person: person, data: data }; })
+                    .catch(function () { return { person: person, failed: true }; });
+            }));
+        }).then(function (items) {
+            var shown = items.filter(function (x) { return x.failed || x.data.totals.sales > 0 || x.person.isActive !== false; });
+            holder.replaceChildren.apply(holder, shown.length ? shown.map(personBlock) : [h("p", { class: "empty" }, "No staff found.")]);
+        }).catch(function (error) {
+            holder.replaceChildren(h("p", { class: "form-error" }, error.message));
+        });
+        return card;
+    }
+
     try {
         var d = await Duka.api("/api/dashboard");
         document.getElementById("dateLine").textContent = isOwner
@@ -84,6 +128,7 @@
                 d.refunds > 0 ? "after " + Duka.fmt.ugx(d.refunds) + " returned" : ""));
         }
         parts.push(h("div", { class: "card" }, h("h2", {}, "Today"), h("div", { class: "stats" }, money)));
+        if (isOwner) parts.push(staffSalesCard());
 
         if (isOwner) {
             parts.push(h("div", { class: "stats" },

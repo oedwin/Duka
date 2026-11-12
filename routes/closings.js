@@ -1,7 +1,8 @@
 // routes/closings.js - end-of-day cash count: the cash that SHOULD be in the drawer vs the cash counted.
 //   GET  /api/closings/preview?date=   everything that moved in cash that day, and the expected total
-//   POST /api/closings                 save the count (owner or cashier; the owner may correct a closed day)
-//   GET  /api/closings                 history, newest first (owner)
+//   POST /api/closings                 save the count, or correct a closed day
+//   GET  /api/closings                 history, newest first
+// OWNER ONLY: every route here is closed to cashiers (router.use below).
 //
 // Expected cash = cash at the start (what was counted at the last closing)
 //   + cash received (sales and debt repayments) - cash handed back (cancelled payments, return refunds)
@@ -19,7 +20,7 @@ const { logAudit } = require("../utils/audit");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
-router.use(requireAuth);
+router.use(requireAuth, requireRole("owner"));
 
 async function cashParts(db, shopId, date) {
     const p = [shopId, date];
@@ -142,7 +143,6 @@ router.post(
 
 router.get(
     "/",
-    requireRole("owner"),
     asyncHandler(async (req, res) => {
         const { rows } = await pool.query(
             `SELECT d.*, u.full_name AS by_name FROM day_closings d LEFT JOIN users u ON u.id = d.closed_by

@@ -128,7 +128,7 @@ router.patch(
                  WHERE shop_id = $1 AND role = 'owner' AND is_active AND id <> $2`,
                 [req.user.shopId, id]
             );
-            if (others.rows[0].n === 0) {
+            if (Number(others.rows[0].n) === 0) {
                 throw new HttpError(400, "The shop needs at least one active owner.");
             }
         }

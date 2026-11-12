@@ -1,9 +1,9 @@
-/* closing.js - end of the day: how much cash SHOULD be in the drawer, and how much you counted.
+/* closing.js - end of the day (OWNER ONLY: other users are sent back to Home): how much cash SHOULD be in the drawer, and how much you counted.
    Only cash counts here. Mobile Money and bank money are not in the drawer. */
 (async function () {
     "use strict";
     var h = Duka.h;
-    var page = await Duka.initPage({ title: "Close the day" });
+    var page = await Duka.initPage({ title: "Close the day", roles: ["owner"] });
     var isOwner = page.user.role === "owner";
 
     var date = Duka.fmt.today();
