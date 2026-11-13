@@ -49,10 +49,13 @@
     var referenceInput = h("input", { class: "input", id: "reference", type: "text", maxlength: "60", placeholder: "Invoice or delivery note number (optional)" });
 
     // ---------- finding products ----------
-    var search = h("input", { class: "input", type: "search", placeholder: "Search the product you received", autocomplete: "off", "aria-label": "Search products" });
+    var search = h("input", { class: "input", type: "search", placeholder: "Search the product", autocomplete: "off", "aria-label": "Search products" });
     var results = h("div", { class: "card results" });
     var linesBox = h("div", {});
-    var emptyLines = h("p", { class: "empty" }, "Search above and tap a product to add it.");
+    var emptyLines = h("p", { class: "empty" }, "Search and tap a product to add it.");
+    var tableHead = h("div", { class: "pr-head", "aria-hidden": "true", hidden: true },
+        h("span", {}, "Product"), h("span", {}, "Unit"), h("span", {}, "Qty"),
+        h("span", {}, "Cost price"), h("span", {}, "Update cost price"), h("span", {}, "Amount"), h("span", {}));
 
     async function loadResults() {
         var mine = ++searchId;
@@ -101,24 +104,26 @@
         var unit = units[units.length - 1]; // you usually buy by the biggest unit
         var l = { key: ++lineKey, product: product, unit: unit, qty: 1, cost: product.costPrice * unit.factor, touched: false, update: true, els: null };
 
-        var unitSelect = h("select", { class: "input", "aria-label": "Unit" }, units.map(function (u) { return h("option", { value: String(u.id) }, u.name); }));
+        var unitSelect = h("select", { class: "input", "aria-label": "Unit for " + product.name }, units.map(function (u) { return h("option", { value: String(u.id) }, u.name); }));
         unitSelect.value = String(unit.id);
-        var qty = numInput({ min: "1", value: "1", "aria-label": "Quantity" });
-        var cost = numInput({ value: String(l.cost), "aria-label": "Buying price" });
-        var update = h("input", { type: "checkbox", checked: true });
+        var qty = numInput({ min: "1", value: "1", "aria-label": "How many " + product.name });
+        var cost = numInput({ value: String(l.cost), "aria-label": "Cost price for 1 " + product.name });
+        var update = h("input", { type: "checkbox", checked: true, "aria-label": "Update the cost price of " + product.name });
         var els = {
-            total: h("strong", {}), note: h("span", { class: "help" }),
+            total: h("strong", { class: "pr-amount" }), note: h("span", { class: "help pr-note" }),
         };
         var remove = h("button", { type: "button", class: "x", "aria-label": "Remove " + product.name }, "\u00d7");
-        var root = h("div", { class: "cart-line" },
-            h("div", { class: "cl-top" }, h("div", { class: "name" }, product.name), remove),
-            h("div", { class: "cl-controls" },
-                h("div", { class: "field" }, h("label", {}, "Unit"), unitSelect),
-                h("div", { class: "field" }, h("label", {}, "How many"), qty)),
-            h("div", { class: "field" }, h("label", {}, "Buying price for 1 (UGX)"), cost),
-            h("label", { class: "check" }, update, "Update this product's cost price"),
-            els.note,
-            h("div", { class: "cl-bottom" }, els.total));
+        // One row per product: Product | Unit | Qty | Cost price | Update cost price | Amount | X
+        var root = h("div", { class: "cart-line pr-line" },
+            h("div", { class: "pr-row" },
+                h("div", { class: "pr-name" }, h("div", { class: "name" }, product.name)),
+                h("div", { class: "pr-unit" }, h("span", { class: "pr-lab" }, "Unit"), unitSelect),
+                h("div", { class: "pr-qty" }, h("span", { class: "pr-lab" }, "How many"), qty),
+                h("div", { class: "pr-cost" }, h("span", { class: "pr-lab" }, "Cost price (UGX) for 1"), cost),
+                h("label", { class: "pr-upd" }, update, h("span", { class: "pr-txt" }, "Update this product's cost price")),
+                els.total,
+                remove),
+            els.note);
         l.els = els;
         els.root = root;
 
@@ -153,6 +158,7 @@
     function updatePayment() {
         var t = total();
         emptyLines.hidden = state.lines.length > 0;
+        tableHead.hidden = state.lines.length === 0;
         totalEl.textContent = "Total: " + Duka.fmt.ugx(t);
         var p = parseInt(paid.value, 10) || 0;
         var owed = t - p;
@@ -215,28 +221,33 @@
         }
     });
 
-    page.main.append(h("div", {},
+    // Layout (see the sketch): on a wide screen the left column holds Supplier, What you received and
+    // Payment, and Products received sits on the right. On a phone everything stacks in this order:
+    // Supplier, Products received, What you received, Payment.
+    page.main.append(h("div", { class: "pf-wrap" },
         h("p", {}, h("a", { href: "/stock.html" }, "\u2190 Back to stock")),
         h("div", { class: "page-head" }, h("h1", {}, "Record a purchase"), h("p", {}, "Stock you received from a supplier.")),
-        h("div", { class: "card" },
-            h("h2", {}, "Supplier"),
-            h("div", { class: "field" }, supplierSelect, h("div", {}, h("button", { type: "button", class: "btn ghost small", onclick: newSupplier }, "New supplier"))),
-            h("div", { class: "pair" },
-                h("div", { class: "field" }, h("label", { for: "date" }, "Date received"), dateInput),
-                h("div", { class: "field" }, h("label", { for: "reference" }, "Invoice number"), referenceInput))),
-        h("div", { class: "card" },
-            h("h2", {}, "Products received"),
-            search, results),
-        h("div", { class: "card" }, h("h2", {}, "What you received"), emptyLines, linesBox),
-        h("div", { class: "card" },
-            h("h2", {}, "Payment"),
-            totalEl,
-            h("div", { class: "actions" }, payAll, payNone),
-            h("div", { class: "field" }, h("label", {}, "Paid now (UGX)"), paid),
-            h("div", { class: "pair" }, h("div", { class: "field" }, method), h("div", { class: "field" }, reference)),
-            owedEl,
-            h("div", { class: "field" }, noteInput)),
-        errorBox, save));
+        h("div", { class: "pf" },
+            h("div", { class: "card pf-supplier" },
+                h("h2", {}, "Supplier"),
+                h("div", { class: "field" }, supplierSelect, h("div", {}, h("button", { type: "button", class: "btn ghost small", onclick: newSupplier }, "New supplier"))),
+                h("div", { class: "pair" },
+                    h("div", { class: "field" }, h("label", { for: "date" }, "Date received"), dateInput),
+                    h("div", { class: "field" }, h("label", { for: "reference" }, "Invoice number"), referenceInput))),
+            h("div", { class: "card pf-products" },
+                h("h2", {}, "Products received"),
+                search, results),
+            h("div", { class: "card pf-received" },
+                h("h2", {}, "What you received"), emptyLines, tableHead, linesBox),
+            h("div", { class: "card pf-payment" },
+                h("h2", {}, "Payment"),
+                totalEl,
+                h("div", { class: "actions" }, payAll, payNone),
+                h("div", { class: "field" }, h("label", {}, "Paid now (UGX)"), paid),
+                h("div", { class: "pair" }, h("div", { class: "field" }, method), h("div", { class: "field" }, reference)),
+                owedEl,
+                h("div", { class: "field" }, noteInput),
+                errorBox, save))));
 
     updatePayment();
     loadResults();

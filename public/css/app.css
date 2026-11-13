@@ -355,3 +355,49 @@ details.card[open] > summary { margin-bottom: .9rem; }
 .cl-row .x { width: 40px; height: 40px; }
 .cart-line > .help { display: block; margin-top: .2rem; }
 @media (max-width: 380px) { .cl-row { grid-template-columns: minmax(0, 1fr) 56px 60px 68px 36px; gap: .3rem; } }
+
+/* ---------- Record a purchase: Supplier | What you received | Payment on the left, Products received on the right ---------- */
+.pf-products .results { max-height: 60vh; overflow-y: auto; margin-bottom: 0; }
+.pr-line { padding: .8rem 0; }
+.pr-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; align-items: end; }
+.pr-name { grid-column: 1; min-width: 0; align-self: center; }
+.pr-name .name { font-weight: 700; overflow-wrap: anywhere; }
+.pr-row .x { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
+.pr-cost, .pr-upd, .pr-amount { grid-column: 1 / -1; }
+.pr-lab { display: block; margin-bottom: .2rem; font-weight: 700; font-size: .9rem; }
+.pr-upd { display: flex; align-items: center; gap: .7rem; min-height: 44px; cursor: pointer; }
+.pr-upd input { width: 24px; height: 24px; accent-color: var(--green); flex: none; }
+.pr-amount { text-align: right; font-size: 1.15rem; white-space: nowrap; }
+.pr-note { display: block; margin-top: .3rem; }
+.pr-head { display: none; }
+
+@media (min-width: 720px) {
+    .pr-head, .pr-row {
+        display: grid; grid-template-columns: minmax(0, 1.4fr) 112px 72px 104px 64px 118px 44px;
+        gap: .5rem; align-items: center;
+    }
+    .pr-head { padding: .3rem 0 .5rem; border-bottom: 2px solid var(--ink); font-size: .8rem; font-weight: 800; color: var(--muted); line-height: 1.15; }
+    .pr-head span:nth-child(n+2) { text-align: center; }
+    .pr-head span:nth-child(6) { text-align: right; }
+    .pr-name, .pr-cost, .pr-upd, .pr-amount, .pr-row .x { grid-column: auto; grid-row: auto; }
+    .pr-row .x { justify-self: center; }
+    .pr-lab, .pr-txt { display: none; }
+    .pr-upd { justify-content: center; min-height: 48px; }
+    .pr-amount { font-size: 1rem; }
+    .pr-row .input { padding: .4rem .5rem; }
+    .pr-row select.input { padding-left: .4rem; padding-right: 0; }
+    .pr-cost .input, .pr-qty .input { text-align: right; }
+}
+
+@media (min-width: 1300px) {
+    .page > .pf-wrap { max-width: 1240px; }
+    .pf {
+        display: grid; grid-template-columns: 1.5fr 1fr; gap: 0 1.5rem; align-items: start;
+        grid-template-areas: "sup prod" "rec prod" "pay prod";
+    }
+    .pf-supplier { grid-area: sup; }
+    .pf-products { grid-area: prod; position: sticky; top: 72px; }
+    .pf-received { grid-area: rec; }
+    .pf-payment { grid-area: pay; }
+    .pr-head, .pr-row { grid-template-columns: minmax(0, 1.1fr) 98px 60px 84px 56px 108px 38px; gap: .4rem; }
+}
