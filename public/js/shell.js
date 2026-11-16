@@ -19,6 +19,7 @@
         truck: '<path d="M1 6h13v10H1zM14 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
         store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 006 0 3 3 0 006 0 3 3 0 006 0"/><path d="M5 12v8h14v-8"/>',
         more: '<path d="M5 12h.01M12 12h.01M19 12h.01"/>',
+        clipboard: '<path d="M9 3h6v3H9z"/><path d="M7 5H5v16h14V5h-2"/><path d="M9 11h6M9 15h6"/>',
         gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'
     };
 
@@ -29,6 +30,8 @@
         { href: "/sales.html", label: "Sales", icon: "receipt", roles: ["owner", "cashier"], also: ["/receipt.html"] },
         { href: "/products.html", label: "Products", icon: "box", roles: ["owner", "cashier"],
           also: ["/product-form.html", "/product-import.html"] },
+        { href: "/orders.html", label: "Orders", icon: "clipboard", roles: ["owner", "cashier"],
+          also: ["/order-form.html", "/order.html"] },
         { href: "/customers.html", label: "Customers", icon: "user", roles: ["owner"], more: true,
           also: ["/customer.html", "/payment-receipt.html"] },
         { href: "/expenses.html", label: "Expenses", icon: "coins", roles: ["owner"], more: true },

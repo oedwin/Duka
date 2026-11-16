@@ -724,3 +724,44 @@ BEGIN
     VALUES (v_shop, 'language', 'en'),
            (v_shop, 'low_stock_default', '10');
 END $$;
+-- Purchase orders: what you plan to buy from a supplier (nothing here changes stock or money).
+-- Run this ONCE on your database (and paste it at the end of database.sql so new installs get it too).
+
+CREATE TABLE IF NOT EXISTS purchase_orders (
+    id            BIGSERIAL PRIMARY KEY,
+    shop_id       BIGINT NOT NULL REFERENCES shops(id),
+    client_uuid   UUID   NOT NULL,                      -- a double tap or retry can never save the order twice
+    order_number  INTEGER NOT NULL,                     -- 1, 2, 3 ... per shop (shown as PO-0001)
+    supplier_id   BIGINT REFERENCES suppliers(id),
+    status        TEXT NOT NULL DEFAULT 'draft'
+                  CHECK (status IN ('draft', 'sent', 'received', 'cancelled')),
+    order_date    DATE NOT NULL,
+    expected_date DATE,
+    note          TEXT NOT NULL DEFAULT '',
+    created_by    BIGINT REFERENCES users(id),
+    updated_by    BIGINT REFERENCES users(id),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (shop_id, order_number),
+    UNIQUE (shop_id, client_uuid)
+);
+
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+    id            BIGSERIAL PRIMARY KEY,
+    order_id      BIGINT NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+    product_id    BIGINT NOT NULL REFERENCES products(id),
+    unit_id       BIGINT NOT NULL REFERENCES product_units(id),
+    product_name  TEXT NOT NULL,                        -- copies, so an old order never changes
+    unit_name     TEXT NOT NULL,
+    quantity      INTEGER NOT NULL CHECK (quantity > 0),
+    unit_cost     BIGINT,                               -- estimated buying price for 1 unit (UGX)
+    auto_added    BOOLEAN NOT NULL DEFAULT FALSE        -- true = put there automatically because stock was low
+);
+
+CREATE INDEX IF NOT EXISTS purchase_orders_shop_status_idx ON purchase_orders (shop_id, status, order_number DESC);
+CREATE INDEX IF NOT EXISTS purchase_order_items_order_idx  ON purchase_order_items (order_id);
+
+-- Keep updated_at correct automatically (uses the set_updated_at() function from database.sql).
+DROP TRIGGER IF EXISTS trg_purchase_orders_updated_at ON purchase_orders;
+CREATE TRIGGER trg_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();

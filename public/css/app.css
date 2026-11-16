@@ -401,3 +401,94 @@ details.card[open] > summary { margin-bottom: .9rem; }
     .pf-payment { grid-area: pay; }
     .pr-head, .pr-row { grid-template-columns: minmax(0, 1.1fr) 98px 60px 84px 56px 108px 38px; gap: .4rem; }
 }
+
+/* ---------- Purchase orders ---------- */
+.po-line { padding: .8rem 0; border-top: 1px solid var(--line); }
+.po-line:first-child { border-top: 0; }
+.po-row { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; align-items: end; }
+.po-name { grid-column: 1; min-width: 0; align-self: center; }
+.po-name .name { font-weight: 700; overflow-wrap: anywhere; }
+.po-row .x { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
+.po-cost, .po-amount { grid-column: 1 / -1; }
+.po-amount { text-align: right; font-size: 1.15rem; white-space: nowrap; }
+.po-head { display: none; }
+.po-gap { height: .6rem; }
+.po-actions { margin-bottom: 1rem; }
+.page-head h1 { display: inline-block; margin-right: .5rem; }
+
+@media (min-width: 720px) {
+    .po-head, .po-row {
+        display: grid; grid-template-columns: minmax(0, 1.5fr) 112px 80px 104px 118px 44px;
+        gap: .5rem; align-items: center;
+    }
+    .po-table.nocost .po-head, .po-table.nocost .po-row { grid-template-columns: minmax(0, 1.6fr) 130px 96px 44px; }
+    .po-head { padding: .3rem 0 .5rem; border-bottom: 2px solid var(--ink); font-size: .8rem; font-weight: 800; color: var(--muted); line-height: 1.15; }
+    .po-head span:nth-child(n+2) { text-align: center; }
+    .po-table:not(.nocost) .po-head span:nth-child(5) { text-align: right; }
+    .po-row .x { grid-column: auto; grid-row: auto; justify-self: center; }
+    .po-cost, .po-amount { grid-column: auto; }
+    .po-amount { font-size: 1rem; }
+    .po-row .input { padding: .4rem .5rem; }
+    .po-row select.input { padding-left: .4rem; padding-right: 0; }
+    .po-cost .input, .po-qty .input { text-align: right; }
+}
+@media (min-width: 1300px) {
+    .po-head, .po-row { grid-template-columns: minmax(0, 1.2fr) 98px 64px 90px 108px 38px; gap: .4rem; }
+    .po-table.nocost .po-head, .po-table.nocost .po-row { grid-template-columns: minmax(0, 1.4fr) 110px 80px 38px; }
+}
+
+/* The printed sheet */
+.order-sheet { margin-bottom: 1rem; padding: 1.25rem; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+.os-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.os-shop { font-weight: 900; font-size: 1.3rem; }
+.os-no { text-align: right; }
+.os-title { font-weight: 900; font-size: 1.4rem; letter-spacing: .06em; }
+.os-num { font-weight: 800; font-size: 1.1rem; }
+.os-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .6rem 1rem; margin: 1rem 0; }
+.os-meta dt { color: var(--muted); font-size: .85rem; font-weight: 700; }
+.os-meta dd { margin: 0; font-weight: 700; }
+.os-table { width: 100%; border-collapse: collapse; margin: .5rem 0; }
+.os-table th, .os-table td { padding: .5rem .4rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.os-table th { font-size: .85rem; color: var(--muted); border-bottom: 2px solid var(--ink); }
+.os-table .num { text-align: right; white-space: nowrap; }
+.os-total td { border-top: 2px solid var(--ink); border-bottom: 0; font-weight: 900; font-size: 1.1rem; }
+.os-note { margin-top: 1rem; }
+.os-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 3rem; }
+.os-sign div { padding-top: .3rem; border-top: 1px solid var(--ink); font-size: .9rem; }
+@media print {
+    @page { margin: 12mm; }
+    .order-sheet { padding: 0; border: 0; border-radius: 0; }
+    .os-table th { color: #000; }
+}
+
+/* ---------- Add / edit product: one Product card in columns, action panel on the right ---------- */
+.prf-grid { display: grid; grid-template-columns: 1fr; gap: 0 1.2rem; align-items: start; }
+.prf-gap { display: none; }
+.prf-inline { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+.prf-inline > .input { flex: 1 1 auto; min-width: 0; }
+.prf-inline.nw { flex-wrap: nowrap; }
+.prf-inline.nw > select.input { flex: 0 0 38%; min-width: 0; }
+.prf-inline > .btn { flex: none; }
+.prf-inline > select.input { flex: 1 1 130px; min-width: 130px; }
+.prf-inline > .btn { white-space: nowrap; flex: 1 1 auto; }
+.prf-chip {
+    flex: none; display: inline-flex; align-items: center; max-width: 45%; padding: 0 .8rem;
+    border: 2px solid var(--line); border-radius: 8px; background: #f4f7f4; color: var(--muted); font-weight: 700;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.prf-more { margin-top: .5rem; padding-top: .5rem; border-top: 2px solid var(--line); }
+.prf-more > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 800; font-size: 1.1rem; }
+.prf-more[open] > summary { margin-bottom: .6rem; }
+.prf-wh { margin-top: 1rem; }
+.prf-side .prf-actions { display: grid; gap: .6rem; margin-top: 0; }
+.prf-side .prf-actions .form-error { margin: 0; }
+@media (min-width: 640px) { .prf-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1000px) {
+    .page > .prf { max-width: 1120px; }
+    .prf { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 0 1.25rem; align-items: start; }
+    .prf-side { position: sticky; top: 72px; }
+}
+@media (min-width: 1250px) {
+    .prf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .prf-gap { display: block; }
+}

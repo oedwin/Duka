@@ -75,7 +75,8 @@
             .map(function (u) { return h("option", { value: u }); }));
 
     var costInput = numInput("cost");
-    var costUnit = h("select", { class: "input", id: "costUnit", "aria-label": "Cost is for one" });
+    var costLabel = h("label", { for: "cost" }, "Cost price");
+    var sellUnit = h("span", { class: "prf-chip", "aria-hidden": "true" }, "Piece");
     var costNote = h("span", { class: "help" });
     var retailInput = numInput("retail");
     var profitNote = h("span", { class: "help" });
@@ -176,28 +177,20 @@
         select.selectedIndex = Math.min(index, options.length - 1);
     }
 
-    /* Cost per ONE base unit, from whatever unit the shopkeeper typed it for. */
+    /* Cost price is for ONE smallest unit (the unit you sell in). */
     function costPerBase() {
         var amount = whole(costInput);
         if (amount === null) return { value: null, note: "" };
-        var option = unitOptions()[costUnit.selectedIndex];
-        if (!option || option.factor < 1) {
-            return { value: null, note: "First fill in how many " + baseName() + " are inside the " + (option ? option.name : "unit") + "." };
-        }
-        var perBase = Math.round(amount / option.factor);
-        var note = "";
-        if (costUnit.selectedIndex > 0) {
-            note = "That is " + Duka.fmt.ugx(perBase) + " for each " + baseName() + (perBase * option.factor === amount ? "." : " (rounded to a whole shilling).");
-        }
-        return { value: perBase, note: note };
+        return { value: Math.round(amount), note: "" };
     }
 
     function refresh() {
         extras.forEach(function (r) {
             r.insideLabel.textContent = "How many " + baseName() + " are inside 1 " + (r.name.value.trim() || "of this unit") + "?";
         });
-        fillSelect(costUnit);
         fillSelect(stockUnit);
+        costLabel.textContent = "Cost price (UGX per " + baseName() + ")";
+        sellUnit.textContent = baseName();
 
         var cost = costPerBase();
         costNote.textContent = cost.note;
@@ -221,7 +214,7 @@
     }
 
     [baseUnitInput, costInput, retailInput, stockInput].forEach(function (i) { i.addEventListener("input", refresh); });
-    [costUnit, stockUnit].forEach(function (s) { s.addEventListener("change", refresh); });
+    stockUnit.addEventListener("change", refresh);
 
     // ---------- build what we send to the server ----------
     function buildPayload() {
@@ -301,46 +294,53 @@
     var saveButton = h("button", { class: "btn block", type: "submit" }, isEdit ? "Save changes" : "Save product");
     var againButton = isEdit ? null : h("button", { class: "btn ghost block", type: "button" }, "Save and add another");
 
-    var form = h("form", { novalidate: true },
-        h("div", { class: "card" },
+    var cancelLink = h("a", { class: "btn ghost block", href: "/products.html" }, "Cancel");
+    var catField = h("div", { class: "field" },
+        h("label", { for: "category" }, "Category"),
+        h("div", { class: "prf-inline" }, categorySelect,
+            h("button", { class: "btn ghost small", type: "button", onclick: addCategory }, "New category")));
+    var costField = h("div", { class: "field" }, costLabel, costInput,
+        h("span", { class: "help" }, "Used to work out your profit."));
+    var sellField = h("div", { class: "field" },
+        h("label", { for: "retail" }, "Selling price (UGX)"),
+        h("div", { class: "prf-inline nw" }, retailInput, sellUnit), profitNote);
+    var stockField = isEdit ? null : h("div", { class: "field" },
+        h("label", { for: "stockQty" }, "Stock available"),
+        h("div", { class: "prf-inline nw" }, stockInput, stockUnit), stockNote);
+    var photoField = h("div", { class: "field" },
+        h("span", { class: "label" }, "Photo"), photoPreview, photoFile, h("div", {}, photoRemove));
+
+    var form = h("form", { novalidate: true, class: "prf" },
+        h("div", { class: "card prf-main" },
             h("h2", {}, "Product"),
-            labeled("Product name", nameInput),
-            h("div", { class: "field" },
-                h("label", { for: "category" }, "Category"), categorySelect,
-                h("div", {}, h("button", { class: "btn ghost small", type: "button", onclick: addCategory }, "New category"))),
-            labeled("Unit you sell in", baseUnitInput, "The smallest unit, e.g. Piece, Kg or Bottle. Stock is counted in this."),
-            unitList),
-        h("div", { class: "card" },
-            h("h2", {}, "Prices" + (isEdit ? "" : " and stock")),
-            h("div", { class: "field" },
-                h("label", { for: "cost" }, "Cost price (what you pay)"),
-                h("div", { class: "pair" }, costInput, h("div", {}, costUnit)),
-                h("span", { class: "help" }, "Per one of the unit chosen. Used to work out your profit."),
-                costNote),
-            labeled("Selling price (UGX) for one of the unit above", retailInput),
-            profitNote,
-            isEdit ? null : h("div", { class: "field" },
-                h("label", { for: "stockQty" }, "Stock you have now"),
-                h("div", { class: "pair" }, stockInput, h("div", {}, stockUnit)),
-                stockNote)),
-        h("details", { class: "card" },
-            h("summary", {}, "More options"),
-            h("h3", {}, "Bigger units"),
-            h("p", { class: "muted" }, "If you also sell or buy by the carton, sack or pack, add it here. Stock is then shown like \"3 Cartons, 5 Pieces\"."),
-            extrasBox, addUnitButton,
-            h("h3", {}, "Wholesale price"),
-            h("div", { class: "pair" },
-                labeled("Wholesale price (UGX) for one of the unit above", wholesaleInput),
-                labeled("Applies from quantity", wholesaleMin, "Leave empty for any quantity.")),
-            h("h3", {}, "Other details"),
-            labeled("Warn me when stock is at or below", reorderInput, "Empty = use the shop setting."),
-            h("div", { class: "pair" },
-                labeled("Barcode", barcodeInput),
-                labeled("Your own code (SKU)", skuInput)),
-            labeled("Expiry date", expiryInput, "You will be warned before it expires."),
-            h("div", { class: "field" },
-                h("span", { class: "label" }, "Photo"), photoPreview, photoFile, h("div", {}, photoRemove))),
-        errorBox, saveButton, againButton);
+            h("div", { class: "prf-grid" },
+                labeled("Product name", nameInput),
+                catField,
+                labeled("Unit you sell in", baseUnitInput, "The smallest unit, e.g. Piece, Kg or Bottle. Stock is counted in this."),
+                costField,
+                sellField,
+                h("div", { class: "prf-gap" }),
+                stockField,
+                labeled("Stock warning", reorderInput, "Warn me when stock is at or below this. Empty = use the shop setting."),
+                isEdit ? null : h("div", { class: "prf-gap" }),
+                labeled("Expiry date", expiryInput, "You will be warned before it expires."),
+                photoField),
+            unitList,
+            h("details", { class: "prf-more" },
+                h("summary", {}, "More options"),
+                h("h3", {}, "Bigger units"),
+                h("p", { class: "muted" }, "If you also sell or buy by the carton, sack or pack, add it here. Stock is then shown like \"3 Cartons, 5 Pieces\"."),
+                extrasBox, addUnitButton,
+                h("div", { class: "prf-grid prf-wh" },
+                    labeled("Wholesale price (UGX)", wholesaleInput),
+                    labeled("Applies from quantity", wholesaleMin, "Leave empty for any quantity."),
+                    h("div", { class: "prf-gap" })),
+                h("div", { class: "prf-grid" },
+                    labeled("Barcode", barcodeInput),
+                    labeled("Your own code (SKU)", skuInput)))),
+        h("aside", { class: "prf-side" },
+            h("div", { class: "card prf-actions" },
+                errorBox, saveButton, againButton, cancelLink)));
 
     function fail(message) {
         errorBox.textContent = message;
@@ -433,8 +433,8 @@
             photoPreview.hidden = false;
             photoRemove.hidden = false;
         }
-        var details = form.querySelector("details");
-        if (extras.length || baseWholesale[0] || product.reorderLevel || product.barcode || product.sku || product.expiryDate || product.photo) {
+        var details = form.querySelector("details.prf-more");
+        if (extras.length || baseWholesale[0] || product.barcode || product.sku) {
             details.open = true;
         }
     }

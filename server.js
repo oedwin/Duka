@@ -23,6 +23,7 @@ const expenseRoutes = require("./routes/expenses");
 const reportRoutes = require("./routes/reports");
 const dashboardRoutes = require("./routes/dashboard");
 const closingRoutes = require("./routes/closings");
+const orderRoutes = require("./routes/orders");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -97,6 +98,7 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/closings", closingRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Health-check route
 app.get("/health", (req, res) => {
