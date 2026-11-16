@@ -492,3 +492,11 @@ details.card[open] > summary { margin-bottom: .9rem; }
     .prf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .prf-gap { display: block; }
 }
+
+/* ---------- Product pictures (list and till) ---------- */
+.p-thumb {
+    flex: none; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--green-soft); color: var(--green-dark);
+    font-size: 1.3rem; font-weight: 800; overflow: hidden;
+}
+.p-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }

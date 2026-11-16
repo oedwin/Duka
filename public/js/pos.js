@@ -255,6 +255,54 @@
         repriceAll();
     }
 
+
+    // ---------- product photos ----------
+    // Photos are not in the product list itself (they are big), so we ask for the ones on screen
+    // a few at a time, keep them in memory, and drop them into the little picture boxes.
+    var PHOTO_CACHE = {};   // product id -> picture ("" = this product has none)
+    var photoWaiting = {};  // product id -> picture boxes waiting for it
+    var photoTimer = null;
+    var photoBusy = false;
+
+    function paintThumb(box, url) {
+        box.textContent = "";
+        box.appendChild(h("img", { src: url, alt: "" }));
+    }
+    function photoThumb(product) {
+        var key = String(product.id);
+        var box = h("span", { class: "p-thumb", "aria-hidden": "true" }, (product.name || "?").trim().charAt(0).toUpperCase());
+        if (key in PHOTO_CACHE) {
+            if (PHOTO_CACHE[key]) paintThumb(box, PHOTO_CACHE[key]);
+        } else {
+            (photoWaiting[key] = photoWaiting[key] || []).push(box);
+            clearTimeout(photoTimer);
+            photoTimer = setTimeout(loadPhotos, 60);
+        }
+        return box;
+    }
+    async function loadPhotos() {
+        if (photoBusy) return;
+        photoBusy = true;
+        try {
+            var ids = Object.keys(photoWaiting).filter(function (id) { return !(id in PHOTO_CACHE); });
+            while (ids.length) {
+                var chunk = ids.splice(0, 10);
+                try {
+                    var data = await Duka.api("/api/product-photos?ids=" + chunk.join(","));
+                    chunk.forEach(function (id) { PHOTO_CACHE[id] = (data.photos && data.photos[id]) || ""; });
+                } catch (error) {
+                    chunk.forEach(function (id) { delete photoWaiting[id]; }); // no picture: the letter box stays
+                }
+                chunk.forEach(function (id) {
+                    var url = PHOTO_CACHE[id];
+                    (photoWaiting[id] || []).forEach(function (box) { if (url) paintThumb(box, url); });
+                    delete photoWaiting[id];
+                });
+                if (!ids.length) ids = Object.keys(photoWaiting).filter(function (id) { return !(id in PHOTO_CACHE); });
+            }
+        } finally { photoBusy = false; }
+    }
+
     // ---------- finding products ----------
     function renderResults() {
         if (lastResults.length === 0) {
@@ -268,6 +316,7 @@
                 type: "button", class: "row product-btn" + (out ? " disabled" : ""), disabled: out,
                 onclick: function () { addProduct(p); }
             },
+                photoThumb(p),
                 h("div", { class: "grow" },
                     h("div", { class: "name" }, p.name),
                     h("div", { class: "sub" }, out ? "Out of stock" : "In stock: " + Duka.fmt.stock(p.stockBase, p.units))),

@@ -180,7 +180,7 @@ router.get(
         const customerId = req.query.customerId ? parseId(req.query.customerId) : null;
 
         const { rows } = await pool.query(
-            `SELECT p.id, p.name, p.barcode, p.stock_base, p.reorder_level
+            `SELECT p.id, p.name, p.barcode, p.stock_base, p.reorder_level, (p.photo IS NOT NULL) AS has_photo
              FROM products p WHERE ${where.join(" AND ")}
              ORDER BY LOWER(p.name) LIMIT ${limit}`,
             params
@@ -196,6 +196,7 @@ router.get(
                     name: r.name,
                     barcode: r.barcode,
                     stockBase: r.stock_base,
+                    hasPhoto: r.has_photo,
                     units: units.get(r.id) || [],
                     prices: (prices.get(r.id) || []).filter((p) => p.customerId === null || p.customerId === customerId)
                 }))
