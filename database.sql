@@ -765,3 +765,178 @@ CREATE INDEX IF NOT EXISTS purchase_order_items_order_idx  ON purchase_order_ite
 DROP TRIGGER IF EXISTS trg_purchase_orders_updated_at ON purchase_orders;
 CREATE TRIGGER trg_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ---------------------------------------------------------------------
+-- 1. PLANS
+--    features = a list of feature keys the app checks later, e.g. ["purchasing","suppliers"].
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subscription_plans (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    code        VARCHAR(30)  NOT NULL UNIQUE,            -- 'starter', 'business', 'professional'
+    name        VARCHAR(60)  NOT NULL,
+    description TEXT,
+    max_users   INTEGER      NOT NULL CHECK (max_users >= 1),
+    features    JSONB        NOT NULL DEFAULT '[]'::jsonb,
+    sort_order  INTEGER      NOT NULL DEFAULT 0,
+    is_active   BOOLEAN      NOT NULL DEFAULT TRUE,      -- FALSE = hidden from new sign-ups, existing subscribers keep it
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------
+-- 2. PLAN PRICES  (monthly, quarterly, yearly)
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subscription_plan_prices (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    plan_id    BIGINT  NOT NULL REFERENCES subscription_plans(id) ON DELETE CASCADE,
+    months     INTEGER NOT NULL CHECK (months IN (1, 3, 12)),
+    price      BIGINT  NOT NULL CHECK (price >= 0),      -- whole UGX for the WHOLE period
+    is_active  BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (plan_id, months)
+);
+
+-- ---------------------------------------------------------------------
+-- 3. SUBSCRIPTIONS  (one per business)
+--    status:
+--      trialing   free trial running (until trial_ends_at)
+--      active     paid, running until current_period_end
+--      past_due   the paid period ended and nothing new was paid yet: renewal screen
+--      expired    trial ended without a payment
+--      cancelled  stops at current_period_end and is not renewed
+--      suspended  switched off by the Duka administrator
+--    The app decides "may this business work right now?" from status + dates,
+--    so nothing breaks if a daily job is late.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    shop_id              BIGINT NOT NULL UNIQUE REFERENCES shops(id) ON DELETE CASCADE,
+    plan_id              BIGINT NOT NULL REFERENCES subscription_plans(id),
+    status               VARCHAR(12) NOT NULL DEFAULT 'trialing'
+                         CHECK (status IN ('trialing', 'active', 'past_due', 'expired', 'cancelled', 'suspended')),
+    trial_started_at     TIMESTAMPTZ,
+    trial_ends_at        TIMESTAMPTZ,
+    current_period_start TIMESTAMPTZ,                    -- start of the period that was paid for
+    current_period_end   TIMESTAMPTZ,                    -- the business may work until this moment
+    billing_months       INTEGER CHECK (billing_months IS NULL OR billing_months IN (1, 3, 12)),
+    cancelled_at         TIMESTAMPTZ,
+    cancel_reason        TEXT,
+    suspended_at         TIMESTAMPTZ,
+    suspended_reason     TEXT,
+    reminder_sent_for    TIMESTAMPTZ,                    -- the period_end we already sent the "7 days left" reminder for
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------
+-- 4. SUBSCRIPTION PAYMENTS  (the payment history; also what the payment provider confirms)
+--    client_uuid       made by the browser: a double tap on "Pay" starts ONE payment.
+--    merchant_ref      OUR reference sent to the provider, unique, e.g. DUKA-12-20261116-8F3A
+--    provider_ref      THEIR reference / transaction id, unique per provider: a repeated
+--                      notification cannot be applied twice.
+--    A payment starts as 'pending'; it only becomes 'successful' after the provider's
+--    notification has been VERIFIED (Step 5). Only a successful payment extends the subscription.
+--    period_start/end  filled when the payment is applied: exactly which days it bought.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subscription_payments (
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    shop_id         BIGINT NOT NULL REFERENCES shops(id) ON DELETE RESTRICT,
+    subscription_id BIGINT REFERENCES subscriptions(id) ON DELETE SET NULL,
+    plan_id         BIGINT NOT NULL REFERENCES subscription_plans(id),
+    client_uuid     UUID   NOT NULL,
+    merchant_ref    VARCHAR(60) NOT NULL UNIQUE,
+    months          INTEGER NOT NULL CHECK (months IN (1, 3, 12)),
+    amount          BIGINT  NOT NULL CHECK (amount >= 0),
+    currency        CHAR(3) NOT NULL DEFAULT 'UGX',
+    provider        VARCHAR(20) NOT NULL
+                    CHECK (provider IN ('flutterwave', 'pesapal', 'mtn_momo', 'airtel_money', 'manual')),
+    method          VARCHAR(20),                         -- what the customer used: 'mtn', 'airtel', 'card' ...
+    phone           VARCHAR(15) CHECK (phone IS NULL OR phone ~ '^[0-9]{9,15}$'),
+    provider_ref    VARCHAR(120),
+    status          VARCHAR(10) NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'successful', 'failed', 'cancelled', 'refunded')),
+    failure_reason  TEXT,
+    period_start    TIMESTAMPTZ,
+    period_end      TIMESTAMPTZ,
+    paid_at         TIMESTAMPTZ,
+    raw_response    JSONB,                               -- what the provider told us, kept as proof
+    created_by      BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    note            TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (shop_id, client_uuid),
+    CHECK (status <> 'successful' OR paid_at IS NOT NULL)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sub_payment_provider_ref
+    ON subscription_payments (provider, provider_ref) WHERE provider_ref IS NOT NULL;
+
+-- ---------------------------------------------------------------------
+-- INDEXES
+-- ---------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_sub_status_end     ON subscriptions (status, current_period_end);
+CREATE INDEX IF NOT EXISTS idx_sub_trial_end      ON subscriptions (trial_ends_at) WHERE status = 'trialing';
+CREATE INDEX IF NOT EXISTS idx_sub_payments_shop  ON subscription_payments (shop_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sub_payments_state ON subscription_payments (status, created_at DESC);
+
+-- ---------------------------------------------------------------------
+-- Automatic updated_at (uses set_updated_at() from database.sql)
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE t TEXT;
+BEGIN
+    FOREACH t IN ARRAY ARRAY['subscription_plans', 'subscription_plan_prices', 'subscriptions', 'subscription_payments']
+    LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS trg_%I_updated_at ON %I', t, t);
+        EXECUTE format(
+            'CREATE TRIGGER trg_%I_updated_at BEFORE UPDATE ON %I
+             FOR EACH ROW EXECUTE FUNCTION set_updated_at()', t, t);
+    END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------------
+-- STARTER DATA: the three plans and their prices
+-- Prices are whole UGX for the whole period. Quarterly and yearly are simply
+-- 3x and 12x the monthly price (no discount). To offer a discount later, change
+-- the price here: no app code needs to change.
+-- ---------------------------------------------------------------------
+INSERT INTO subscription_plans (code, name, description, max_users, features, sort_order) VALUES
+    ('starter',      'Starter',      'For a small shop just getting going.', 2,
+     '["products","inventory","sales","receipts","basic_reports"]'::jsonb, 1),
+    ('business',     'Business',     'Everything a growing shop needs.', 5,
+     '["products","inventory","sales","receipts","basic_reports","purchasing","suppliers","customer_debts","advanced_reports"]'::jsonb, 2),
+    ('professional', 'Professional', 'For bigger shops with a team.', 15,
+     '["products","inventory","sales","receipts","basic_reports","purchasing","suppliers","customer_debts","advanced_reports","advanced_analytics","staff_management","priority_support"]'::jsonb, 3)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO subscription_plan_prices (plan_id, months, price)
+SELECT p.id, m.months, v.monthly * m.months
+FROM (VALUES ('starter', 25000), ('business', 50000), ('professional', 100000)) AS v(code, monthly)
+JOIN subscription_plans p ON p.code = v.code
+CROSS JOIN (VALUES (1), (3), (12)) AS m(months)
+ON CONFLICT (plan_id, months) DO NOTHING;
+
+-- ---------------------------------------------------------------------
+-- BUSINESSES THAT ALREADY EXIST
+-- Give every existing business a subscription row so nobody is locked out by surprise:
+-- a 14-day free trial on the Business plan, starting now. (Step 2 does the same
+-- automatically for each NEW business when it registers.)
+-- ---------------------------------------------------------------------
+INSERT INTO subscriptions (shop_id, plan_id, status, trial_started_at, trial_ends_at)
+SELECT s.id, (SELECT id FROM subscription_plans WHERE code = 'business'),
+       'trialing', NOW(), NOW() + INTERVAL '14 days'
+FROM shops s
+WHERE NOT EXISTS (SELECT 1 FROM subscriptions x WHERE x.shop_id = s.id);
+
+-- admin_accounts.sql - the Duka administrator's own accounts. Run ONCE on your database.
+-- These accounts have no shop and are separate from shop users: they log in at /admin-login and can only
+-- use the admin dashboard. Create the first one with:  node scripts/create-admin.js "Your Name" 0772123456
+CREATE TABLE IF NOT EXISTS admin_accounts (
+    id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    full_name     VARCHAR(100) NOT NULL,
+    phone         VARCHAR(15) NOT NULL UNIQUE CHECK (phone ~ '^[0-9]{9,15}$'),
+    password_hash TEXT NOT NULL,
+    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    last_login_at TIMESTAMPTZ,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

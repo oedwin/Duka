@@ -7,6 +7,7 @@ const cors = require("cors");
 
 const pool = require("./db"); // Connect the database to Duka's server
 const { notFound, errorHandler } = require("./middleware/errorHandler");
+const { requireAuth, requireFeature } = require("./middleware/auth");
 
 // One router file per module (more are added in each build step)
 const authRoutes = require("./routes/auth");
@@ -25,6 +26,9 @@ const dashboardRoutes = require("./routes/dashboard");
 const closingRoutes = require("./routes/closings");
 const orderRoutes = require("./routes/orders");
 const productPhotoRoutes = require("./routes/product-photos");
+const subscriptionRoutes = require("./routes/subscription");
+const pesapalRoutes = require("./routes/pesapal");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -84,6 +88,29 @@ app.use(
     })
 );
 
+// The install name of the app: the shop's own name (Duka's browser code asks for /api/manifest?n=Shop%20Name).
+// Anyone can call this, so the name is cleaned and cut short. Without a name the app is just "Duka".
+app.get("/api/manifest", (req, res) => {
+    const shop = String(req.query.n || "").replace(/[\u0000-\u001f\u007f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
+    const icons = [
+        { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
+    ];
+    res.set("Cache-Control", "no-cache").type("application/manifest+json").send(JSON.stringify({
+        name: shop || "Duka",
+        short_name: (shop || "Duka").slice(0, 12),
+        description: "Sales, stock and customers for your shop.",
+        id: "/", start_url: "/", scope: "/", display: "standalone",
+        background_color: "#edf2ee", theme_color: "#0a5a37", lang: "en",
+        icons,
+        shortcuts: [
+            { name: "Sell", url: "/pos", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+            { name: "Sales", url: "/sales", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] }
+        ]
+    }));
+});
+
 // ---------- Routes ----------
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -93,14 +120,20 @@ app.use("/api/products", productRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/sales", saleRoutes);
 app.use("/api/stock", stockRoutes);
-app.use("/api/suppliers", supplierRoutes);
-app.use("/api/purchases", purchaseRoutes);
+// Suppliers and purchases belong to the Business plan and above (only enforced when SUBSCRIPTION_ENFORCE=true).
+app.use("/api/suppliers", requireAuth, requireFeature("suppliers"), supplierRoutes);
+app.use("/api/purchases", requireAuth, requireFeature("purchasing"), purchaseRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/closings", closingRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/product-photos", productPhotoRoutes);
+app.use("/api/subscription", subscriptionRoutes);
+// Called by Pesapal and by the customer coming back from paying: no login (see routes/pesapal.js).
+app.use("/api/pesapal", pesapalRoutes);
+// The Duka administrator only (own login, admin_accounts table): see routes/admin.js.
+app.use("/api/admin", adminRoutes);
 
 // Health-check route
 app.get("/health", (req, res) => {

@@ -34,6 +34,7 @@
                 }
             });
             Duka.auth.save(data.token, data.user);
+            if (data.subscription) Duka.flash("Welcome! Your free trial has started: " + data.subscription.daysLeft + " days to try everything.");
             window.location.href = "/dashboard.html";
         } catch (error) {
             fail(error.message);

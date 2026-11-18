@@ -132,8 +132,9 @@ textarea.input { min-height: 84px; resize: vertical; }
         top: 56px; right: auto; bottom: 0; width: 210px; height: auto;
         flex-direction: column; justify-content: flex-start; gap: .25rem;
         padding: 1rem .75rem; border-top: 0; border-right: 1px solid var(--line);
+        overflow-y: auto; overscroll-behavior: contain; /* long menu: scroll inside the sidebar */
     }
-    .nav a { flex: none; flex-direction: row; justify-content: flex-start; gap: .75rem; padding: 0 .9rem; min-height: 48px; border-radius: 10px; font-size: 1rem; }
+    .nav a { flex: none; flex-direction: row; justify-content: flex-start; gap: .75rem; padding: 0 .9rem; min-height: 44px; border-radius: 10px; font-size: 1rem; }
     .nav a[aria-current="page"] { background: var(--green-soft); box-shadow: none; }
     .page { margin: 0 0 0 210px; max-width: none; padding: 1.5rem 2rem 3rem; }
     .page > * { max-width: 760px; }
@@ -500,3 +501,45 @@ details.card[open] > summary { margin-bottom: .9rem; }
     font-size: 1.3rem; font-weight: 800; overflow: hidden;
 }
 .p-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- Subscription ---------- */
+.sub-banner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem;
+    margin-bottom: 1rem; padding: .6rem .9rem; border-radius: 10px;
+    background: var(--green-soft); color: var(--green-dark); font-weight: 700;
+}
+.sub-banner.warn { background: #fff1c9; color: #7a5200; }
+.sub-banner a { color: inherit; white-space: nowrap; }
+.sub-status { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; margin-bottom: .5rem; }
+.sub-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .6rem 1rem; margin: .8rem 0; }
+.sub-facts dt { color: var(--muted); font-size: .85rem; font-weight: 700; }
+.sub-facts dd { margin: 0; font-weight: 800; }
+.plan-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem; }
+@media (min-width: 900px) { .plan-grid { grid-template-columns: repeat(3, 1fr); } .page > .sub-wide { max-width: 1000px; } }
+.plan-card { display: flex; flex-direction: column; padding: 1.1rem; background: #fff; border: 2px solid var(--line); border-radius: 14px; }
+.plan-card.rec { border-color: var(--green); }
+.plan-card.current { background: var(--green-soft); }
+.plan-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .3rem; }
+.plan-head h3 { margin: 0; }
+.plan-price { font-size: 1.6rem; font-weight: 900; }
+.plan-price { font-size: 1.45rem; }
+.plan-price small { display: block; white-space: nowrap; font-size: .82rem; font-weight: 700; color: var(--muted); }
+.plan-sub { min-height: 1.3em; margin-bottom: .6rem; color: var(--muted); font-size: .9rem; }
+.plan-list { flex: 1; margin: 0 0 1rem; padding-left: 1.2rem; }
+.plan-list li { margin-bottom: .25rem; }
+.pay-ref { padding: .5rem .8rem; border-radius: 8px; background: #f4f7f4; font: 700 1.05rem ui-monospace, monospace; letter-spacing: .03em; }
+.sub-title { margin: 0; }
+
+/* Admin dashboard */
+.dialog h3 { margin: 1.1rem 0 .4rem; }
+.dialog .row-actions { margin: .8rem 0 .2rem; }
+
+/* The administrator's screen is separate from the shop system: its own header, no sidebar. */
+.admin-page { max-width: 960px; margin: 0 auto; padding: 1rem 1rem 3rem; }
+.topbar .admin-link { color: #fff; font-weight: 700; text-decoration: none; padding: .5rem .6rem; }
+
+/* Install app button (only shown when the device can install Duka) */
+.topbar .install-btn { background: #fff; color: var(--green-dark); border-color: #fff; }
+.topbar .install-btn[hidden] { display: none; }
+@media (max-width: 420px) { .topbar .install-btn { padding: 0 .6rem; font-size: .85rem; } }
+@media (display-mode: standalone) { .install-btn { display: none; } }

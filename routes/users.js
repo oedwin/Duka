@@ -12,6 +12,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { normalizePhone, formatPhone } = require("../utils/phone");
 const { cleanText, checkPassword, parseId, has } = require("../utils/validators");
 const { logAudit } = require("../utils/audit");
+const { assertRoomForUser } = require("../utils/subscriptions");
 const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
@@ -64,6 +65,8 @@ router.post(
             throw new HttpError(409, "Someone already uses this phone number.");
         }
 
+        await assertRoomForUser(pool, req.user.shopId); // the plan's user limit (when subscriptions are enforced)
+
         const hash = await bcrypt.hash(password, 10);
         const { rows } = await pool.query(
             `INSERT INTO users (shop_id, full_name, phone, password_hash, role)
@@ -112,6 +115,8 @@ router.patch(
             if (typeof req.body.isActive !== "boolean") throw new HttpError(400, "Choose on or off.");
             isActive = req.body.isActive;
         }
+
+        if (isActive === true && !target.is_active) await assertRoomForUser(pool, req.user.shopId);
 
         // Safety rules so the shop can never lock itself out.
         const losesOwnerPower =

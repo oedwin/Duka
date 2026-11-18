@@ -1,7 +1,7 @@
 // routes/auth.js - register a shop, log in, who am I, change my password.
-//   POST /api/auth/register          create a shop + its owner
+//   POST /api/auth/register          create a shop + its owner (and start its free trial)
 //   POST /api/auth/login             phone + password -> token
-//   GET  /api/auth/me                current user and shop name
+//   GET  /api/auth/me                current user, shop name and subscription state (works even when expired)
 //   POST /api/auth/change-password   change my own password
 const express = require("express");
 const bcrypt = require("bcryptjs");
@@ -13,7 +13,8 @@ const { normalizePhone, formatPhone } = require("../utils/phone");
 const { cleanText, checkPassword } = require("../utils/validators");
 const { logAudit } = require("../utils/audit");
 const { createShopDefaults } = require("../utils/shopDefaults");
-const { signToken, requireAuth } = require("../middleware/auth");
+const { startTrial, trialSummary, accessFor, publicAccess } = require("../utils/subscriptions");
+const { signToken, requireAuthAnyStatus } = require("../middleware/auth");
 const { loginLimiter, registerLimiter } = require("../middleware/rateLimit");
 
 const router = express.Router();
@@ -49,7 +50,8 @@ router.post(
 
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // One transaction: either the whole shop is created, or nothing is.
+        // One transaction: either the whole shop (with its free trial) is created, or nothing is.
+        let trial = null;
         const user = await pool.withTransaction(async (client) => {
             const exists = await client.query("SELECT 1 FROM users WHERE phone = $1", [phone]);
             if (exists.rowCount > 0) {
@@ -70,6 +72,7 @@ router.post(
             );
 
             await createShopDefaults(client, shopId);
+            trial = await startTrial(client, shopId, created.rows[0].id);
             await logAudit(client, {
                 shopId,
                 userId: created.rows[0].id,
@@ -84,7 +87,7 @@ router.post(
         res.status(201).json({
             success: true,
             message: "Your shop is ready.",
-            data: { token: signToken(user.id), user: publicUser(user, shopName) }
+            data: { token: signToken(user.id), user: publicUser(user, shopName), subscription: trialSummary(trial) }
         });
     })
 );
@@ -99,14 +102,26 @@ router.post(
 
         let user = null;
         if (phone) {
-            const { rows } = await pool.query(
+            const loginSql = (withSubscription) =>
                 `SELECT u.id, u.shop_id, u.full_name, u.phone, u.role, u.password_hash,
-                        u.is_active, s.name AS shop_name, s.is_active AS shop_active
+                        u.is_active, s.name AS shop_name, s.is_active AS shop_active` +
+                (withSubscription
+                    ? `, sub.status AS sub_status, sub.trial_ends_at, sub.current_period_end,
+                        pl.code AS plan_code, pl.name AS plan_name, pl.features, pl.max_users` : "") + `
                  FROM users u
-                 JOIN shops s ON s.id = u.shop_id
-                 WHERE u.phone = $1`,
-                [phone]
-            );
+                 JOIN shops s ON s.id = u.shop_id` +
+                (withSubscription
+                    ? `
+                 LEFT JOIN subscriptions sub ON sub.shop_id = u.shop_id
+                 LEFT JOIN subscription_plans pl ON pl.id = sub.plan_id` : "") + `
+                 WHERE u.phone = $1`;
+            let rows;
+            try {
+                ({ rows } = await pool.query(loginSql(true), [phone]));
+            } catch (error) {
+                if (error.code !== "42P01") throw error; // subscription tables not created yet: log in without them
+                ({ rows } = await pool.query(loginSql(false), [phone]));
+            }
             user = rows[0] || null;
         }
 
@@ -131,7 +146,10 @@ router.post(
 
         res.json({
             success: true,
-            data: { token: signToken(user.id), user: publicUser(user, user.shop_name) }
+            data: {
+                token: signToken(user.id), user: publicUser(user, user.shop_name),
+                subscription: publicAccess(accessFor(user.sub_status ? user : null))
+            }
         });
     })
 );
@@ -139,7 +157,7 @@ router.post(
 // ---------- Who am I? ----------
 router.get(
     "/me",
-    requireAuth,
+    requireAuthAnyStatus,
     asyncHandler(async (req, res) => {
         const { rows } = await pool.query("SELECT name FROM shops WHERE id = $1", [req.user.shopId]);
         const me = {
@@ -151,14 +169,14 @@ router.get(
             shopId: req.user.shopId,
             shopName: rows[0] ? rows[0].name : null
         };
-        res.json({ success: true, data: { user: me } });
+        res.json({ success: true, data: { user: me, subscription: publicAccess(req.subscription) } });
     })
 );
 
 // ---------- Change my own password ----------
 router.post(
     "/change-password",
-    requireAuth,
+    requireAuthAnyStatus,
     asyncHandler(async (req, res) => {
         const current = typeof req.body.currentPassword === "string" ? req.body.currentPassword : "";
         const newPassword = checkPassword(req.body.newPassword, "new password");

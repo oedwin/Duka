@@ -20,6 +20,7 @@
         store: '<path d="M3 9l1.5-5h15L21 9"/><path d="M3 9a3 3 0 006 0 3 3 0 006 0 3 3 0 006 0"/><path d="M5 12v8h14v-8"/>',
         more: '<path d="M5 12h.01M12 12h.01M19 12h.01"/>',
         clipboard: '<path d="M9 3h6v3H9z"/><path d="M7 5H5v16h14V5h-2"/><path d="M9 11h6M9 15h6"/>',
+        card: '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4"/>',
         gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>'
     };
 
@@ -42,6 +43,7 @@
           also: ["/purchase-form.html", "/purchase.html"] },
         { href: "/suppliers.html", label: "Suppliers", icon: "store", roles: ["owner"], more: true, also: ["/supplier.html"] },
         { href: "/staff.html", label: "Staff", icon: "users", roles: ["owner"], more: true },
+        { href: "/subscription.html", label: "Subscription", icon: "card", roles: ["owner"], more: true },
         { href: "/settings.html", label: "Settings", icon: "gear", roles: ["owner"], more: true }
     ];
 
@@ -61,6 +63,8 @@
         var h = Duka.h;
         var never = new Promise(function () {}); // used to stop a page that is redirecting
 
+        var subInfo = null;
+        var main = null;
         var token = Duka.auth.getToken();
         if (!token) { window.location.replace("/"); return never; }
 
@@ -70,13 +74,14 @@
                 var me = await Duka.api("/api/auth/me");
                 user = me.user;
                 Duka.auth.saveUser(user);
+                subInfo = me.subscription;
             } catch (error) {
                 document.body.textContent = error.message;
                 return never;
             }
         } else {
             // Show the page at once from what we know, and check quietly in the background.
-            Duka.api("/api/auth/me").then(function (me) { Duka.auth.saveUser(me.user); }).catch(function () {});
+            Duka.api("/api/auth/me").then(function (me) { Duka.auth.saveUser(me.user); showBanner(me.subscription); }).catch(function () {});
         }
 
         if (options.roles && options.roles.indexOf(user.role) === -1) {
@@ -96,11 +101,47 @@
         window.addEventListener("offline", updateNet);
         updateNet();
 
+
+        /* The reminder at the top of every page: free trial running, or the subscription ends soon (owner only). */
+        var bannerShown = false;
+        function showBanner(sub) {
+            if (bannerShown || !sub || !main || user.role !== "owner" || window.location.pathname.indexOf("/subscription") === 0) return;
+            var days = sub.daysLeft;
+            var text = null, link = "Choose a plan", warn = false;
+            var plural = days === 1 ? " day" : " days";
+            if (sub.state === "trial") {
+                text = "Free trial: " + days + plural + " left.";
+                warn = days <= 7;
+            } else if (sub.state === "active" && sub.renewSoon) {
+                text = "Your subscription ends in " + days + plural + " (" + Duka.fmt.date(sub.endsAt) + ").";
+                link = "Renew now"; warn = true;
+            } else if (sub.state === "cancelling") {
+                text = "Your subscription is cancelled and ends on " + Duka.fmt.date(sub.endsAt) + ".";
+                link = "Keep it"; warn = true;
+            }
+            if (!text) return;
+            bannerShown = true;
+            main.prepend(h("div", { class: "sub-banner no-print" + (warn ? " warn" : ""), role: "status" },
+                h("span", {}, text), h("a", { href: "/subscription.html" }, link)));
+        }
+
         var logout = h("button", { type: "button", onclick: Duka.auth.logout }, "Log out");
+        // "Install app": Chrome/Edge/Android open their install prompt; iPhone/iPad get the Add to Home Screen steps.
+        var installBtn = h("button", { type: "button", class: "install-btn", hidden: true, onclick: async function () {
+            if (Duka.install.canPrompt()) { await Duka.install.prompt(); return; }
+            Duka.dialog({
+                title: "Install Duka on this device",
+                message: "In Safari, tap the Share button (the square with an arrow), then choose \"Add to Home Screen\". Duka then opens like an app.",
+                confirmText: "OK", cancelText: "Close"
+            });
+        } }, "Install app");
+        function syncInstall() { installBtn.hidden = !Duka.install.offer(); }
+        document.addEventListener("duka:install-changed", syncInstall);
+        syncInstall();
         var topbar = h("header", { class: "topbar" },
             h("span", { class: "brand" }, "Duka"),
             h("span", { class: "shopname" }, user.shopName || ""),
-            net, logout);
+            net, installBtn, logout);
 
         var nav = h("nav", { class: "nav", "aria-label": "Main" });
         var morePanel = h("div", { class: "nav-more" });
@@ -133,7 +174,7 @@
             document.addEventListener("click", function () { nav.classList.remove("open"); });
         }
 
-        var main = h("main", { class: "page", id: "page" });
+        main = h("main", { class: "page", id: "page" });
         document.body.textContent = "";
         document.body.append(topbar, nav, main);
 
@@ -141,6 +182,7 @@
         try { flash = sessionStorage.getItem("duka_flash"); sessionStorage.removeItem("duka_flash"); } catch (e) { /* ignore */ }
         if (flash) Duka.toast(flash);
 
+        if (subInfo) showBanner(subInfo);
         return { user: user, main: main };
     };
 })();

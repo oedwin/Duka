@@ -24,6 +24,60 @@
         logout: function () { Duka.auth.clear(); window.location.href = "/"; }
     };
 
+    // ---------- Install on a computer or phone (PWA) ----------
+    // Adds the install information to every page, starts the service worker (/sw.js), and lets a
+    // screen offer an "Install app" button. Chrome/Edge/Android show their own prompt; iPhone/iPad
+    // (Safari) have no prompt, so Duka.install.isIos() lets the screen show the "Add to Home Screen" steps.
+    (function () {
+        function put(tag, attrs, key) {
+            if (document.head.querySelector(key)) return;
+            var el = document.createElement(tag);
+            Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+            document.head.appendChild(el);
+        }
+        // The app is installed under the shop's own name (e.g. "Shoe Hub"); before login it is just "Duka".
+        var shopName = "";
+        try { var saved = JSON.parse(localStorage.getItem("duka_user")); shopName = (saved && saved.shopName) || ""; } catch (e) { /* ignore */ }
+        put("link", { rel: "manifest", href: shopName ? "/api/manifest?n=" + encodeURIComponent(shopName) : "/manifest.json" }, 'link[rel="manifest"]');
+        put("link", { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" }, 'link[rel="apple-touch-icon"]');
+        put("link", { rel: "icon", type: "image/png", href: "/icons/icon-192.png" }, 'link[rel="icon"]');
+        put("meta", { name: "apple-mobile-web-app-capable", content: "yes" }, 'meta[name="apple-mobile-web-app-capable"]');
+        put("meta", { name: "mobile-web-app-capable", content: "yes" }, 'meta[name="mobile-web-app-capable"]');
+        put("meta", { name: "apple-mobile-web-app-title", content: (shopName || "Duka").slice(0, 12) }, 'meta[name="apple-mobile-web-app-title"]');
+        put("meta", { name: "apple-mobile-web-app-status-bar-style", content: "default" }, 'meta[name="apple-mobile-web-app-status-bar-style"]');
+
+        var secure = window.location.protocol === "https:" || window.location.hostname === "localhost";
+        if (secure && "serviceWorker" in navigator) {
+            window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function () {}); });
+        }
+
+        var deferred = null;
+        function announce(name) { try { document.dispatchEvent(new Event(name)); } catch (e) { /* ignore */ } }
+        window.addEventListener("beforeinstallprompt", function (event) { event.preventDefault(); deferred = event; announce("duka:install-changed"); });
+        window.addEventListener("appinstalled", function () { deferred = null; announce("duka:install-changed"); });
+
+        var ua = navigator.userAgent || "";
+        Duka.install = {
+            // Already opened as an installed app?
+            standalone: function () {
+                return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+            },
+            isIos: function () { return /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1); },
+            canPrompt: function () { return Boolean(deferred); },
+            // Should a screen show an Install button right now?
+            offer: function () { return !Duka.install.standalone() && (Duka.install.canPrompt() || Duka.install.isIos()); },
+            prompt: async function () {
+                if (!deferred) return false;
+                var event = deferred;
+                deferred = null;
+                event.prompt();
+                var choice = await event.userChoice.catch(function () { return {}; });
+                announce("duka:install-changed");
+                return choice.outcome === "accepted";
+            }
+        };
+    })();
+
     // ---------- Unique ids (so a double-tap or retry can never save a sale twice) ----------
     Duka.uuid = function () {
         if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -77,6 +131,11 @@
                 if (response.status === 401 && !options.noAuthRedirect) {
                     Duka.auth.clear();
                     window.location.href = "/";
+                }
+                // Subscription ended: send the person to the renewal screen (login and payment still work).
+                if (response.status === 402 && error.code === "SUBSCRIPTION_REQUIRED" && !options.noSubscriptionRedirect
+                    && window.location.pathname.indexOf("/subscription") !== 0) {
+                    window.location.href = "/subscription.html";
                 }
                 if (response.status >= 500 && i < attempts - 1) {
                     lastError = error;
